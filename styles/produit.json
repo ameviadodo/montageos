@@ -1,0 +1,53 @@
+{
+  "name": "produit",
+  "mode": "produit",
+  "description": "Visuels produits / packshots : diaporama dynamique de photos (Ken Burns), textes bénéfices animés, upscale Magnific, plans IA Higgsfield, musique.",
+  "format": {
+    "aspect": "9:16"
+  },
+  "cut": {
+    "enabled": false
+  },
+  "zoom": {
+    "every_s": 2.0,
+    "scale": 1.1,
+    "pattern": [
+      "pulse",
+      "ease"
+    ]
+  },
+  "subtitles": {
+    "enabled": true,
+    "font": "Montserrat Black",
+    "size": 0.07,
+    "max_words": 2
+  },
+  "broll": {
+    "per_minute": 0,
+    "layout": "full"
+  },
+  "motion": {
+    "hook_title": true,
+    "accent": "#FF4FD8",
+    "cta": {
+      "text": "DISPONIBLE MAINTENANT",
+      "subtext": "-20 % avec le code LANCEMENT",
+      "duration": 3
+    }
+  },
+  "look": {
+    "eq": "contrast=1.05:saturation=1.1"
+  },
+  "sfx": {
+    "volume": 0.4,
+    "on_zoom": {
+      "punch": "pop",
+      "pulse": "whoosh",
+      "ease": null
+    }
+  },
+  "audio": {
+    "music_volume": 0.5,
+    "duck": true
+  }
+}

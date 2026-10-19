@@ -1,0 +1,7 @@
+{
+  "name": "monteuros",
+  "version": "1.0.0",
+  "description": "MonteurOS — agent monteur vidéo : rush brut → vidéo montée (coupes, B-roll, SFX, animations, sous-titres, zooms), copie de style, formats pub/UGC/documentaire/intro/formation/produit, Higgsfield, Magnific, Google Flow, Hyperframes.",
+  "author": {"name": "MonteurOS"},
+  "keywords": ["video", "montage", "editing", "subtitles", "b-roll", "hyperframes", "higgsfield"]
+}

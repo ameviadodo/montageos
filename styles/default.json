@@ -1,0 +1,101 @@
+{
+  "name": "default",
+  "description": "Style talking-head dynamique, équilibré (YouTube / Reels).",
+  "format": {
+    "aspect": "source",
+    "width": null,
+    "height": null
+  },
+  "cut": {
+    "silence_db": -35,
+    "min_silence": 0.45,
+    "padding": 0.08,
+    "min_keep": 0.25,
+    "remove_retakes": true,
+    "retake_similarity": 0.72,
+    "remove_fillers": true,
+    "fillers": [
+      "euh",
+      "heu",
+      "euhh",
+      "hum",
+      "hmm",
+      "um",
+      "uh",
+      "uhm",
+      "bah",
+      "ben"
+    ]
+  },
+  "zoom": {
+    "enabled": true,
+    "every_s": 5.0,
+    "scale": 1.12,
+    "pulse_scale": 1.18,
+    "pattern": [
+      "punch",
+      "pulse",
+      "ease"
+    ],
+    "ease_s": 0.35,
+    "hold_s": 2.2,
+    "focus": "auto",
+    "focus_x": 0.5,
+    "focus_y": 0.4
+  },
+  "subtitles": {
+    "enabled": true,
+    "font": "Montserrat ExtraBold",
+    "size": 0.065,
+    "primary": "#FFFFFF",
+    "highlight": "#FFD400",
+    "emphasis": "#00E676",
+    "outline": "#000000",
+    "outline_w": 0.006,
+    "shadow": 0,
+    "uppercase": true,
+    "max_words": 3,
+    "max_chars": 22,
+    "position": "lower",
+    "margin_v": 0.22,
+    "pop": true,
+    "karaoke": true
+  },
+  "broll": {
+    "enabled": true,
+    "per_minute": 4,
+    "duration": 2.2,
+    "layout": "full",
+    "provider": "auto",
+    "fade": 0.15
+  },
+  "sfx": {
+    "enabled": true,
+    "volume": 0.35,
+    "on_zoom": {
+      "punch": "pop",
+      "pulse": "whoosh",
+      "ease": null
+    },
+    "on_broll": "swoosh",
+    "on_motion": "riser"
+  },
+  "motion": {
+    "enabled": true,
+    "hook_title": true,
+    "font": "Montserrat Black",
+    "color": "#FFFFFF",
+    "accent": "#FFD400"
+  },
+  "audio": {
+    "lufs": -14,
+    "music": null,
+    "music_volume": 0.12,
+    "duck": true
+  },
+  "export": {
+    "crf": 18,
+    "preset": "medium",
+    "audio_bitrate": "192k"
+  }
+}

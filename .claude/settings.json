@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bin/monteur:*)",
+      "Bash(monteur:*)",
+      "Bash(bash setup.sh:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(ffprobe:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(npx -y hyperframes@latest:*)",
+      "Bash(npx -y skills add heygen-com/hyperframes:*)",
+      "Bash(curl -fsSL -o assets/fonts/:*)",
+      "Read(assets/**)",
+      "Read(styles/**)",
+      "Read(ui/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {"hooks": [{"type": "command", "timeout": 600,
+        "command": "test -x \"$CLAUDE_PROJECT_DIR/.venv/bin/python\" || bash \"$CLAUDE_PROJECT_DIR/setup.sh\" >/dev/null 2>&1 || true"}]}
+    ]
+  }
+}

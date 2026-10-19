@@ -1,0 +1,10 @@
+{
+  "name": "hormozi",
+  "description": "Ultra rythmé : coupes serrées, zooms fréquents, sous-titres gros jaunes/verts mot par mot.",
+  "format": {"aspect": "9:16"},
+  "cut": {"min_silence": 0.25, "padding": 0.05},
+  "zoom": {"every_s": 2.8, "scale": 1.15, "pulse_scale": 1.22, "pattern": ["punch", "pulse", "punch", "ease"]},
+  "subtitles": {"font": "Montserrat Black", "size": 0.075, "max_words": 2, "highlight": "#FFE600", "emphasis": "#2BFF6B", "position": "center", "margin_v": 0.35},
+  "broll": {"per_minute": 7, "duration": 1.6},
+  "sfx": {"volume": 0.45}
+}

@@ -1,0 +1,11 @@
+{
+  "name": "formation", "mode": "formation",
+  "description": "Formation / tuto / cours : clarté avant tout, cartons de chapitres, callouts des points clés, captures d'écran en PiP, sous-titres phrase.",
+  "format": {"aspect": "16:9"},
+  "cut": {"min_silence": 0.55, "padding": 0.12},
+  "zoom": {"every_s": 9, "scale": 1.07, "pattern": ["ease", "punch"]},
+  "subtitles": {"font": "Poppins SemiBold", "size": 0.042, "uppercase": false, "max_words": 7, "max_chars": 40, "highlight": "#7CF2B6", "emphasis": "#7CF2B6", "karaoke": true, "pop": false, "outline_w": 0.003, "shadow": 1, "margin_v": 0.07},
+  "broll": {"per_minute": 2, "duration": 4, "layout": "pip"},
+  "motion": {"hook_title": false, "font": "Poppins ExtraBold", "accent": "#7CF2B6"},
+  "sfx": {"volume": 0.25, "on_zoom": {"punch": "click", "pulse": "click", "ease": null}, "on_motion": "ding"}
+}
