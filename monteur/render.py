@@ -1,4 +1,6 @@
 """Assemblage final : recadrage, zooms, B-roll, animations, sous-titres, bruitages, mixage."""
+import shutil
+
 from .common import ASSETS, ffmpeg, load_json, log, probe
 from .sfx import auto_events
 from .subtitles import build_motion, build_subtitles
@@ -30,20 +32,41 @@ def zoom_expr(zooms, cfg):
     return "1+" + "+".join(terms) if terms else "1"
 
 
+def next_render(ws, draft):
+    """renders/<slug>-vNN-<draft|master>.mp4 — un compteur de versions commun aux deux qualités."""
+    d = ws.dir / "renders"
+    d.mkdir(exist_ok=True)
+    n = 1 + max([int(p.stem.split("-v")[-1][:2]) for p in d.glob("*-v[0-9][0-9]-*.mp4")] or [0])
+    return d / f"{ws.source.stem}-v{n:02d}-{'draft' if draft else 'master'}.mp4"
+
+
 def fesc(path):
     return str(path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
 
 
-def render(ws, style, out=None):
+def render(ws, style, out=None, draft=False):
+    """Rendu master (ou draft rapide, demi-résolution) versionné dans renders/ ; master copié en final.mp4."""
     plan = load_json(ws.plan, {})
     video = ws.base_video()
     info = probe(video)
     W, H = out_size(info, style["format"])
+    if draft:
+        W, H = W // 4 * 2, H // 4 * 2
     fps = info["fps"]
     dur = info["duration"]
     zc = style["zoom"]
     inputs, graph = ["-i", video], []
     n_in = 1
+
+    # « Split carte » : panneau d'animations en haut, orateur en bas
+    fmt = style["format"]
+    split = fmt.get("layout") == "split"
+    y0 = int(H * fmt.get("split", 0.42)) // 2 * 2 if split else 0
+    CW, CH = W, H          # toile finale
+    H = H - y0             # zone orateur (= toile entière hors split)
+    if split:
+        plan = {**plan, "motion": [dict(m, y=m.get("y", y0 / 2 / CH)) if m.get("type") in ("title", "callout", "cta")
+                                   else m for m in plan.get("motion", [])]}
 
     # 1) recadrage au format cible — suit le visage si focus « auto » (OpenCV), sinon focus fixe
     sw, sh = info["width"], info["height"]
@@ -97,6 +120,10 @@ def render(ws, style, out=None):
     if fx:
         graph.append(f"[{cur}]{','.join(fx)}[vl]")
         cur = "vl"
+    if split:
+        graph.append(f"[{cur}]pad={CW}:{CH}:0:{y0}:color={fmt.get('panel_color', '#0B0F1A')}[vp]")
+        cur = "vp"
+    W, H = CW, CH
 
     # 3) B-roll / illustrations / inserts Hyperframes
     bc = style["broll"]
@@ -115,9 +142,14 @@ def render(ws, style, out=None):
             inputs += ["-stream_loop", "-1", "-t", f"{d + 0.5:.3f}", "-i", b["file"]]
         idx = n_in
         n_in += 1
-        tw, th = (W, H) if lay in ("full", "overlay") else (int(W * 0.46) // 2 * 2, int(W * 0.46 * 9 / 16) // 2 * 2)
-        if lay == "overlay":  # alpha conservé (MOV/WebM Hyperframes)
-            chain = f"[{idx}:v]trim=0:{d:.3f},setpts=PTS-STARTPTS,scale={W}:{H}:force_original_aspect_ratio=decrease,format=yuva420p"
+        if split and lay == "full":
+            lay = "panel"
+        tw, th = {"full": (W, H), "overlay": (W, H), "fullscreen": (W, H), "panel": (W, y0)}.get(
+            lay, (int(W * 0.46) // 2 * 2, int(W * 0.46 * 9 / 16) // 2 * 2))
+        alpha = b.get("type") == "hyperframes" and str(b["file"]).lower().endswith((".mov", ".webm"))
+        if alpha:  # alpha conservé (MOV/WebM Hyperframes), dans la toile ou le panneau
+            chain = (f"[{idx}:v]trim=0:{d:.3f},setpts=PTS-STARTPTS,"
+                     f"scale={tw}:{th}:force_original_aspect_ratio=decrease,format=yuva420p")
         elif is_img:
             chain = (f"[{idx}:v]scale={int(tw * 1.15)}:{int(th * 1.15)}:force_original_aspect_ratio=increase,"
                      f"crop={tw}:{th}:x='(iw-ow)*t/{d:.3f}':y='(ih-oh)/2',setsar=1,format=yuva420p")
@@ -127,7 +159,8 @@ def render(ws, style, out=None):
         chain += (f",fade=t=in:st=0:d={f}:alpha=1,fade=t=out:st={max(0, d - f):.3f}:d={f}:alpha=1,"
                   f"setpts=PTS+{s:.3f}/TB[b{k}]")
         graph.append(chain)
-        x, y = {"full": ("0", "0"), "overlay": ("(main_w-overlay_w)/2", "(main_h-overlay_h)/2")}.get(
+        x, y = {"full": ("0", "0"), "fullscreen": ("0", "0"), "panel": ("(main_w-overlay_w)/2", "0"),
+                "overlay": ("(main_w-overlay_w)/2", "(main_h-overlay_h)/2")}.get(
             lay, (f"{int(W * 0.5)}", f"{int(H * 0.08)}"))
         graph.append(f"[{cur}][b{k}]overlay={x}:{y}:enable='between(t,{s:.3f},{e:.3f})':eof_action=pass[o{k}]")
         cur = f"o{k}"
@@ -178,13 +211,18 @@ def render(ws, style, out=None):
 
     script = ws.dir / "render_filter.txt"
     script.write_text(";\n".join(graph))
-    out = out or ws.final
+    target = next_render(ws, draft)
     ex = style["export"]
-    log(f"Rendu {W}x{H} @ {fps}fps — {len(zooms)} zooms, {len(overlays)} visuels, "
-        f"{len(mix) - 1} pistes son…")
+    preset, crf = ("ultrafast", 30) if draft else (ex["preset"], ex["crf"])
+    log(f"Rendu {'draft' if draft else 'master'} {W}x{H} @ {fps}fps — {len(zooms)} zooms, "
+        f"{len(overlays)} visuels, {len(mix) - 1} pistes son…")
     ffmpeg([*inputs, "-filter_complex_script", script.name, "-map", "[vout]", "-map", "[aout]",
-            "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", ex["preset"], "-crf", str(ex["crf"]),
+            "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", preset, "-crf", str(crf),
             "-r", str(fps), "-c:a", "aac", "-b:a", ex["audio_bitrate"], "-movflags", "+faststart",
-            str(out)], cwd=ws.dir)
-    log(f"✅ Vidéo finale → {out}")
-    return out
+            str(target)], cwd=ws.dir)
+    if not draft:
+        shutil.copyfile(target, ws.final)
+    if out:
+        shutil.copyfile(target, out)
+    log(f"✅ {'Draft' if draft else 'Master'} → {target}")
+    return target

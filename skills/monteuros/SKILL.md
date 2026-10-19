@@ -37,18 +37,26 @@ Puis édite `plan.json` (schéma : `references/plan-schema.md`) :
 
 Puis : `bin/monteur broll RUSH.mp4` (télécharge les nouvelles requêtes) et génère les visuels IA en attente.
 
-## 4. Rendu et contrôle qualité
+## 4. Draft + vérif, retours, master
 ```bash
-bin/monteur render RUSH.mp4 --out RUSH_final.mp4
+bin/monteur render RUSH.mp4 --draft        # renders/RUSH-v01-draft.mp4 + vérification automatique
+bin/monteur retours RUSH.mp4               # retours frame par frame laissés dans le Studio
+bin/monteur render RUSH.mp4 --verif --out RUSH_final.mp4   # master versionné (+ final.mp4)
 ```
+Boucle complète : skill `monteur-retours`. Cartes animées, formats Split carte / Avant-après : skill `monteur-bibliotheque`.
 QC visuel obligatoire : extrais une planche et **regarde-la** (outil Read sur le PNG) :
 ```bash
 ffmpeg -y -i RUSH_final.mp4 -vf "fps=1/3,scale=360:-2,tile=5x4" -frames:v 1 RUSH.monteur/qc.png
 ```
 Vérifie : sous-titres lisibles et non masqués, titre qui ne déborde pas, B-roll pertinents, pas d'écran noir. Corrige `plan.json` / le style, re-rends. Livre le fichier final + un résumé (durée avant/après, nb de coupes, illustrations utilisées, crédits/licences des banques d'images).
 
-## Interface graphique
-`bin/monteur studio --root DOSSIER_DES_RUSHS` → http://127.0.0.1:8765 : rushs, cartes de formats, lecteur Rush/Coupé/Final, timeline (zooms, B-roll, animations), inspecteur du plan, copie de style, charte graphique (skill `monteur-charte`). L'utilisateur peut y retoucher le plan pendant que tu travailles : relis `plan.json` avant de l'écrire.
+## Interface graphique (MonteurOS Studio)
+`bin/monteur studio --root DOSSIER_DES_RUSHS` → http://127.0.0.1:8765, navigation **Projets · Studio · Bibliothèques · Activité** :
+- **Projets** : compteurs (projets, avec un rendu, rendus périmés, disque), filtres famille/type/format/état, cartes avec badges MASTER/DRAFT, format, état (brut → préparé → rendu → prêt à relire → livré), livrables et retours.
+- **Projet** : livrables versionnés, lecteur, vérification du rendu, « Apporter des modifications » (retours frame par frame), actions Préparer / Rendu draft + vérif / Master / B-roll / Marquer livré.
+- **Studio** : transcript.json lu en direct, timeline VO · TXT · SFX · B-ROLL · ZOOMS · ANIM, inspecteur du plan, « Poser une carte animée » à la tête de lecture.
+- **Bibliothèques** : formats de reel, ta charte, références de styles, cartes animées (aperçus live).
+- **Activité** : historique des tâches lancées. L'utilisateur peut y retoucher le plan pendant que tu travailles : relis `plan.json` avant de l'écrire.
 
 ## Règles
 - Ne jamais écraser le rush. Tout se passe dans `RUSH.monteur/`.

@@ -1,0 +1,21 @@
+<!--meta {"label":"Écran 3D poussé","category":"Écrans","mode":"overlay","duration":4.5,
+"vars":{"title":"Où en est chaque projet ?","items":"Ads recyclées — prêt à relire;Spot UGC — livré;Démo écran — en cours;Formation — brut"},
+"usage":"Panneau en verre dépoli incliné à côté de l'orateur, lignes qui entrent une à une."}-->
+<style>
+.panel{position:absolute;right:6%;top:18%;width:52%;padding:calc(var(--u)*3.2);border-radius:calc(var(--u)*2);
+ background:var(--glass);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.12);
+ box-shadow:0 30px 80px rgba(0,0,0,.45);transform:perspective(1400px) rotateY(-18deg) rotateX(4deg)}
+.panel h2{font-size:calc(var(--u)*5.2);margin-bottom:calc(var(--u)*2.4)}
+.row{display:flex;justify-content:space-between;font-size:calc(var(--u)*2.3);padding:calc(var(--u)*1.2) 0;
+ border-top:1px solid rgba(255,255,255,.08)}
+.row b{color:var(--accent);font-family:"Space Mono",monospace;font-weight:400;font-size:.8em}
+</style>
+<template><div class="panel"><h2 class="serif">{{title}}</h2><div id="rows"></div></div></template>
+<script>
+const rows = document.getElementById("rows");
+V.items.split(";").forEach(t => { const [a, b] = t.split("—"); rows.insertAdjacentHTML("beforeend",
+  `<div class="row"><span>${a.trim()}</span><b>${(b || "").trim()}</b></div>`); });
+tl.from(".panel", { x: 260, opacity: 0, rotateY: -40, duration: .8, ease: "power3.out" }, 0)
+  .from(".row", { y: 24, opacity: 0, stagger: .14, duration: .45, ease: "power2.out" }, .45)
+  .to(".panel", { x: 120, opacity: 0, duration: .45, ease: "power2.in" }, V.DUR - .45);
+</script>

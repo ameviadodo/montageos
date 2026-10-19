@@ -1,0 +1,16 @@
+<!--meta {"label":"Citation surlignée","category":"Surlignage","mode":"full","duration":3.5,
+"vars":{"before":"Le montage vidéo","word":"n'est plus","after":"jamais ce qui t'arrête","paper":"#F5EFD9"},
+"usage":"Grande phrase sur fond crème, un groupe de mots passe en couleur d'accent avec soulignement manuscrit."}-->
+<style>
+.paper{position:absolute;inset:0;background:{{paper|#F5EFD9}};color:#141414;display:flex;align-items:center;padding:0 9%}
+.q{font-weight:900;font-size:calc(var(--u)*8.4);line-height:1.02;text-transform:uppercase}
+.q em{font-style:normal;color:#C9A400}
+.q small{display:block;margin-top:calc(var(--u)*2);font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;
+ text-transform:none;font-size:.42em;border-bottom:4px solid var(--accent);width:max-content}
+</style>
+<template><div class="paper"><div class="q">{{before}} <em>{{word}}</em><small>{{after}}</small></div></div></template>
+<script>
+tl.from(".paper", { opacity: 0, duration: .25 }, 0).from(".q", { y: 40, opacity: 0, duration: .55, ease: "power3.out" }, .1)
+  .from(".q em", { color: "#141414", duration: .4 }, .9).from(".q small", { opacity: 0, y: 12, duration: .4 }, 1.2)
+  .to(".paper", { opacity: 0, duration: .3 }, V.DUR - .3);
+</script>

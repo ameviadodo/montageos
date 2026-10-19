@@ -21,6 +21,9 @@ description: Zooms rapides avant-arrière (punch-in, pulse, poussée douce), tit
 - `cta` : appel à l'action de fin (`text`, `subtext`) — automatique si `style.motion.cta`.
 Police/couleurs : `style.motion.font/color/accent`.
 
+## Cartes animées prêtes à l'emploi
+`bin/monteur cartes` puis `bin/monteur carte RUSH.mp4 <id> --start T --set clé=valeur` (écran 3D, rail des étapes, médaillon nom, liste surlignée, marqueurs de section, boot « étape », stat courbe + compteur, titre barre, programme/chapitres, citation). Détails : skill `monteur-bibliotheque`.
+
 ## Hyperframes (motion design HTML → vidéo)
 Pour tout ce qui dépasse le texte : intro de chaîne, graphique qui se dessine, liste à puces animée, logo, mockup produit.
 ```bash

@@ -1,0 +1,49 @@
+{
+  "name": "nocturne",
+  "description": "Charte nocturne : bleu nuit, jaune #FFD935, panneaux de verre en perspective, révélations gris → jaune, cartes LED, montages typographiques crème.",
+  "zoom": {
+    "every_s": 4.5,
+    "pattern": [
+      "punch",
+      "pulse",
+      "ease"
+    ]
+  },
+  "subtitles": {
+    "font": "Montserrat ExtraBold",
+    "highlight": "#FFD935",
+    "emphasis": "#FFD935",
+    "max_words": 3
+  },
+  "motion": {
+    "accent": "#FFD935",
+    "font": "Montserrat Black"
+  },
+  "look": {
+    "eq": "contrast=1.05:saturation=1.05"
+  },
+  "library": {
+    "etat": "Ta charte",
+    "palette": [
+      "#0B0F1A",
+      "#F4F2EC",
+      "#FFD935"
+    ],
+    "fonts": {
+      "display": "Instrument Serif",
+      "body": "Montserrat",
+      "mono": "Space Mono"
+    },
+    "cards": [
+      "ecran.push3d",
+      "ecran.rail",
+      "medaillon.nom",
+      "surlignage.liste",
+      "section.stage",
+      "stat.courbe",
+      "titre.barre",
+      "programme.chapitres",
+      "citation.surligne"
+    ]
+  }
+}

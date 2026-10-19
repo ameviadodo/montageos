@@ -6,265 +6,588 @@
 <title>MonteurOS Studio</title>
 <link rel="stylesheet" id="theme" href="/theme.css">
 <style>
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 var(--font-body);height:100vh;display:grid;
-       grid-template-rows:56px 1fr;overflow:hidden}
-  h1,h2,h3{font-family:var(--font-display);margin:0}
-  button,select,input,textarea{font:inherit;color:inherit}
-  .top{display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid var(--surface2);background:var(--surface)}
-  .logo{font:800 18px var(--font-display);letter-spacing:.5px}
-  .logo b{color:var(--accent)}
-  .top .sp{flex:1}
-  .pill{padding:4px 10px;border-radius:99px;background:var(--surface2);color:var(--muted);font-size:12px}
-  .pill.run{color:var(--bg);background:var(--accent2)}
-  .app{display:grid;grid-template-columns:260px 1fr 360px;min-height:0}
-  aside,main,.insp{overflow:auto;padding:16px}
-  aside{border-right:1px solid var(--surface2);background:var(--surface)}
-  .insp{border-left:1px solid var(--surface2);background:var(--surface)}
-  .sec{margin-bottom:22px}
-  .sec>h3{font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);margin-bottom:10px}
-  .item{padding:9px 11px;border-radius:calc(var(--radius) - 4px);cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center}
-  .item:hover{background:var(--surface2)}
-  .item.on{background:var(--surface2);box-shadow:inset 3px 0 0 var(--accent)}
-  .item small{color:var(--muted)}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--surface2);flex:none}
-  .dot.p{background:var(--accent2)} .dot.d{background:var(--accent)}
-  input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--surface2);border-radius:10px;padding:8px 10px;outline:none}
-  input:focus,textarea:focus,select:focus{border-color:var(--accent)}
-  textarea{resize:vertical;min-height:60px;font-family:ui-monospace,monospace;font-size:12px}
-  .btn{background:var(--surface2);border:0;border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:600}
-  .btn:hover{filter:brightness(1.2)}
-  .btn.pri{background:var(--accent);color:#fff}
-  .btn:disabled{opacity:.4;cursor:default}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-  .card{background:var(--surface);border:1px solid var(--surface2);border-radius:var(--radius);padding:12px;cursor:pointer;min-height:92px}
-  .card:hover{border-color:var(--muted)}
-  .card.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-  .card h4{margin:0 0 4px;font:700 14px var(--font-display)}
-  .card p{margin:0;color:var(--muted);font-size:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  .stage{background:#000;border-radius:var(--radius);overflow:hidden;display:flex;justify-content:center;align-items:center;height:min(46vh,520px)}
-  video{max-width:100%;max-height:100%}
-  .tabs{display:flex;gap:6px;margin:10px 0}
-  .tab{padding:6px 12px;border-radius:8px;cursor:pointer;color:var(--muted)}
-  .tab.on{background:var(--surface2);color:var(--text)}
-  .tl{background:var(--surface);border:1px solid var(--surface2);border-radius:var(--radius);padding:10px 12px;position:relative}
-  .track{display:grid;grid-template-columns:90px 1fr;align-items:center;height:26px;margin:4px 0}
-  .track span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-  .lane{position:relative;height:18px;background:var(--bg);border-radius:6px}
-  .blk{position:absolute;top:2px;height:14px;border-radius:4px;cursor:pointer;min-width:3px;opacity:.9}
-  .blk:hover{opacity:1;outline:1px solid var(--text)}
-  .z{background:var(--accent)} .b{background:var(--accent2)} .m{background:#F59E0B} .s{background:var(--muted)}
-  .head{position:absolute;top:0;bottom:0;width:2px;background:var(--text);pointer-events:none;left:90px}
-  .log{background:#000;color:#9fe;border-radius:10px;padding:10px;font:12px ui-monospace,monospace;height:150px;overflow:auto;white-space:pre-wrap}
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
-  .stat{background:var(--surface);border:1px solid var(--surface2);border-radius:12px;padding:10px}
-  .stat b{display:block;font:800 20px var(--font-display)}
-  .stat small{color:var(--muted)}
-  .ent{background:var(--bg);border:1px solid var(--surface2);border-radius:12px;padding:10px;margin-bottom:8px}
-  .ent.sel{border-color:var(--accent)}
-  .ent .row label{font-size:11px;color:var(--muted)}
-  .ent input,.ent select{padding:6px 8px;margin-top:4px}
-  .muted{color:var(--muted)}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .empty{color:var(--muted);text-align:center;padding:40px 0}
-  @media (max-width:1100px){.app{grid-template-columns:220px 1fr}.insp{display:none}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:radial-gradient(1200px 600px at 10% -10%,rgba(255,217,53,.05),transparent 60%),var(--bg);color:var(--text);
+  font:14px/1.5 var(--font-body);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button,select,input,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--font-mono)}
+.cap{font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.cap.acc{color:var(--accent)}
+.serif{font-family:var(--font-display);font-style:italic;font-weight:400}
+.muted{color:var(--muted)}
+.shell{max-width:1240px;margin:22px auto;border:1px solid var(--surface2);border-radius:calc(var(--radius) + 6px);
+  background:color-mix(in srgb,var(--surface) 70%,transparent);min-height:calc(100vh - 44px);overflow:hidden}
+header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--surface2)}
+.brand{font-weight:800;letter-spacing:.02em}.brand b{color:var(--accent)}
+.brand small{font-weight:500;color:var(--muted);margin-left:8px}
+header .sp{flex:1}
+nav{display:flex;gap:4px}
+nav a{padding:7px 14px;border-radius:99px;text-decoration:none;color:var(--muted);font-weight:600}
+nav a:hover{color:var(--text)}
+nav a.on{background:var(--accent);color:var(--ink)}
+.btn{background:var(--surface2);border:1px solid transparent;border-radius:10px;padding:8px 14px;cursor:pointer;font-weight:700;text-decoration:none;display:inline-block}
+.btn:hover{border-color:var(--muted)}
+.btn.y{background:var(--accent);color:var(--ink)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.4;cursor:default}
+.jobpill{font-family:var(--font-mono);font-size:11px;padding:5px 10px;border-radius:99px;background:var(--surface2);color:var(--muted);cursor:pointer;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jobpill.run{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
+main{padding:24px 26px 40px}
+h1.page{font-family:var(--font-display);font-style:italic;font-weight:400;font-size:40px;margin:0;line-height:1.1}
+h1.page small{font-family:var(--font-mono);font-style:normal;font-size:13px;color:var(--muted);margin-left:8px}
+.sub{color:var(--muted);margin:4px 0 18px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:26px}
+.stat b{display:block;font-family:var(--font-mono);font-size:26px;font-weight:700}
+.stat .cap{display:block;margin-top:2px}
+.stat small{color:var(--muted);font-size:12px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px;border-radius:var(--radius);background:color-mix(in srgb,var(--bg) 60%,transparent);border:1px solid var(--surface2);margin-bottom:18px}
+.filters input[type=search]{flex:1;min-width:200px}
+input,select,textarea{background:var(--bg);border:1px solid var(--surface2);border-radius:10px;padding:8px 10px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--text);font-size:13px;cursor:pointer}
+label.chk input{accent-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--surface2);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:border-color .15s,transform .15s}
+.card:hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--surface2));transform:translateY(-2px)}
+.card .hd{display:flex;justify-content:space-between;gap:8px;padding:14px 16px 10px}
+.card .hd h3{margin:0;font-size:15px;font-weight:800}
+.card .hd small{color:var(--muted);font-size:12px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start}
+.tag{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--surface2);color:var(--muted);font-weight:700}
+.tag.fam{color:#7CC6FF;background:rgba(124,198,255,.1)}
+.thumb{position:relative;aspect-ratio:16/9;background:#000 center/contain no-repeat}
+.thumb .b{position:absolute;bottom:10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;padding:3px 8px;border-radius:99px;background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.25)}
+.thumb .b.l{left:10px}.thumb .b.r{right:10px}
+.ft{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 16px;font-size:12px;color:var(--muted)}
+.pill{font-size:11px;font-weight:800;padding:3px 10px;border-radius:99px;background:var(--surface2);color:var(--muted)}
+.pill.ok{background:color-mix(in srgb,var(--accent2) 16%,transparent);color:var(--accent2)}
+.pill.y{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
+.pill.r{background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger)}
+.dotsep:before{content:"•";margin-right:6px;color:var(--accent2)}
+.panel{background:var(--surface);border:1px solid var(--surface2);border-radius:var(--radius);padding:18px;margin-bottom:18px}
+.panel>.cap{display:block;margin-bottom:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.back{color:var(--muted);text-decoration:none;font-size:13px}.back:hover{color:var(--text)}
+.split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
+.player{background:#000;border-radius:var(--radius);overflow:hidden;display:flex;justify-content:center;align-items:center;min-height:300px;max-height:62vh}
+.player video{max-width:100%;max-height:62vh;display:block}
+.deliv{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;margin-bottom:16px}
+.deliv div{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;border:1px solid var(--surface2);cursor:pointer;font-family:var(--font-mono);font-size:12px}
+.deliv div.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.deliv small{color:var(--muted);display:block;font-size:10px}
+.checks div{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--surface2);font-size:13px}
+.checks i{font-style:normal;width:18px}
+.checks span.muted{margin-left:auto;font-size:12px;text-align:right}
+.actions .act{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:center;padding:10px 0;border-top:1px solid var(--surface2)}
+.actions .act p{margin:0;color:var(--muted);font-size:13px}
+table{width:100%;border-collapse:collapse}
+th{font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:400;padding:10px 12px}
+td{padding:14px 12px;border-top:1px solid var(--surface2);vertical-align:middle}
+tr.click{cursor:pointer}tr.click:hover td{background:color-mix(in srgb,var(--surface2) 40%,transparent)}
+td .nm{font-weight:800}td .ds{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:2px}
+.sw{display:inline-flex;gap:4px}.sw i{width:16px;height:16px;border-radius:4px;display:inline-block;border:1px solid rgba(255,255,255,.12)}
+.fonts{font-size:11px;color:var(--muted);line-height:1.6}.fonts b{font-family:var(--font-mono);font-weight:400;font-size:9px;letter-spacing:.15em;margin-right:4px}
+.sec-h{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--surface2)}
+.tbl{border:1px solid var(--surface2);border-radius:var(--radius);background:var(--surface);margin-bottom:20px;overflow:hidden}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:14px}
+.cv{border-radius:12px;overflow:hidden;border:1px solid var(--surface2);background:var(--bg)}
+.cv .vp{position:relative;aspect-ratio:16/9;overflow:hidden;background:repeating-conic-gradient(#0F1422 0 25%,#0B0F1A 0 50%) 0 0/24px 24px}
+.cv iframe{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0;pointer-events:none}
+.cv .meta{padding:10px 12px}
+.cv code{font-family:var(--font-mono);font-size:12px;color:var(--accent)}
+.cv .meta a{display:inline-block;margin-top:8px;font-weight:700;font-size:13px;cursor:pointer}
+.group{margin:16px 0}
+.group>h3{display:flex;gap:8px;align-items:center;font-size:15px;margin:0 0 4px;cursor:pointer}
+.count{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--accent);color:var(--ink);font-size:11px;font-weight:800}
+.modal{position:fixed;inset:0;background:rgba(3,5,10,.82);display:none;align-items:center;justify-content:center;z-index:20;padding:30px}
+.modal.on{display:flex}
+.modal .box{width:min(1100px,100%);background:var(--surface);border:1px solid var(--surface2);border-radius:var(--radius);overflow:hidden}
+.modal .bar{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--surface2)}
+.modal .bar code{font-family:var(--font-mono);font-size:12px;color:var(--muted);flex:1}
+.modal .stage{position:relative;aspect-ratio:16/9;overflow:hidden;background:repeating-conic-gradient(#0F1422 0 25%,#0B0F1A 0 50%) 0 0/24px 24px}
+.modal iframe{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0}
+.fb{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:26px}
+.ctl{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.ctl .btn{padding:6px 12px}
+.ctl .tc{font-family:var(--font-mono);color:var(--accent);margin-left:6px}
+.prog{height:6px;border-radius:99px;background:var(--surface2);margin-top:12px;position:relative;cursor:pointer}
+.prog i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,#3B82F6,#93C5FD)}
+.prog b{position:absolute;top:-4px;width:2px;height:14px;background:var(--accent)}
+.fbl div{display:flex;gap:12px;align-items:flex-start;padding:10px;border-radius:10px;border:1px solid var(--surface2);margin-bottom:8px;cursor:pointer}
+.fbl div:hover{border-color:var(--muted)}
+.fbl code{font-family:var(--font-mono);color:var(--accent);font-size:12px;white-space:nowrap}
+.fbl p{margin:0;flex:1}
+.fbl .x{color:var(--muted);cursor:pointer;padding:0 4px}
+.kbd{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+.editor{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px}
+.tscript{max-height:180px;overflow:auto;line-height:1.9;font-size:15px}
+.tscript span{cursor:pointer;color:color-mix(in srgb,var(--text) 45%,transparent);border-radius:4px;padding:0 2px}
+.tscript span.on{color:var(--accent)}
+.tscript span.past{color:var(--text)}
+.tl{position:relative;padding:14px 0 6px}
+.tl .hdr{font-family:var(--font-mono);font-size:11px;letter-spacing:.2em;margin:0 0 10px 4px}
+.tl .hdr:before{content:"●";color:var(--accent);margin-right:8px}
+.trk{display:grid;grid-template-columns:110px 1fr;align-items:center;min-height:34px}
+.trk>span{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;line-height:1.2}
+.lane{position:relative;height:26px;border-radius:6px;background:color-mix(in srgb,var(--surface2) 55%,transparent)}
+.blk{position:absolute;top:3px;height:20px;border-radius:5px;font-size:10px;font-weight:800;line-height:20px;padding:0 6px;overflow:hidden;white-space:nowrap;cursor:pointer;color:var(--ink)}
+.blk.sub{background:var(--accent)}.blk.br{background:#7CC6FF}.blk.zm{background:#B794F6}.blk.an{background:#F59E0B}
+.blk.cut{background:var(--danger);opacity:.85;width:4px!important;padding:0}
+.blk.fx{background:var(--surface);color:var(--muted);border:1px solid var(--surface2);border-radius:99px}
+.head{position:absolute;top:30px;bottom:0;width:2px;background:var(--accent);pointer-events:none;box-shadow:0 0 12px var(--accent)}
+.head:before{content:"";position:absolute;top:-6px;left:-5px;width:12px;height:8px;border-radius:2px;background:var(--accent)}
+.ent{background:var(--bg);border:1px solid var(--surface2);border-radius:12px;padding:10px;margin-bottom:8px}
+.ent.sel{border-color:var(--accent)}
+.ent label{font-size:11px;color:var(--muted);display:block;margin-top:6px}
+.ent input,.ent select{width:100%;padding:6px 8px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.log{background:#03050A;color:#A7F3D0;border-radius:10px;padding:10px;font:12px var(--font-mono);max-height:200px;overflow:auto;white-space:pre-wrap}
+.empty{color:var(--muted);text-align:center;padding:50px 0}
+.md h1,.md h2{font-family:var(--font-display);font-style:italic;font-weight:400}
+.md pre{background:#03050A;padding:12px;border-radius:10px;overflow:auto;font:12px var(--font-mono)}
+.md code{font-family:var(--font-mono);font-size:12px;color:var(--accent)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--ink);font-weight:800;padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none;z-index:30}
+.toast.on{opacity:1}
+@media (max-width:980px){.split,.fb,.editor{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.shell{margin:0;border-radius:0}}
 </style>
 </head>
 <body>
-<div class="top">
-  <div class="logo">Monteur<b>OS</b> <span class="muted" style="font-weight:500">Studio</span></div>
-  <span class="pill" id="status">prêt</span>
-  <div class="sp"></div>
-  <label class="muted" for="themeSel">Charte</label>
-  <select id="themeSel" style="width:160px"></select>
+<div class="shell">
+  <header>
+    <div class="brand">Monteur<b>OS</b><small>système de montage</small></div>
+    <div class="sp"></div>
+    <span class="jobpill" id="jobpill" title="Activité">prêt</span>
+    <nav id="nav">
+      <a href="#/projets" data-v="projets">Projets</a>
+      <a href="#/studio" data-v="studio">Studio</a>
+      <a href="#/bibliotheques" data-v="bibliotheques">Bibliothèques</a>
+      <a href="#/activite" data-v="activite">Activité</a>
+    </nav>
+    <button class="btn ghost" id="refresh">Actualiser</button>
+  </header>
+  <main id="view"></main>
 </div>
-<div class="app">
-  <aside>
-    <div class="sec"><h3>Rushs</h3><div id="videos"></div>
-      <p class="muted" style="font-size:12px">Dépose tes vidéos dans <code id="root"></code></p></div>
-    <div class="sec"><h3>Copier un style</h3>
-      <textarea id="refs" placeholder="Liens YouTube ou chemins .mp4 (un par ligne)"></textarea>
-      <div class="row" style="margin-top:6px"><input id="refName" placeholder="nom du style"><button class="btn" id="cloneBtn">Analyser</button></div>
-    </div>
-    <div class="sec"><h3>Charte graphique</h3>
-      <textarea id="charteSrc" placeholder="Captures d'écran, vidéo ou lien YouTube de l'interface à imiter"></textarea>
-      <div class="row" style="margin-top:6px"><input id="charteName" placeholder="nom de la charte"><button class="btn" id="charteBtn">Extraire</button></div>
-    </div>
-  </aside>
-
-  <main>
-    <div id="noproj" class="empty">Sélectionne un rush à gauche pour commencer.</div>
-    <div id="proj" hidden>
-      <div class="row" style="justify-content:space-between;margin-bottom:12px">
-        <h2 id="title"></h2>
-        <div class="row">
-          <select id="aspect" style="width:110px"><option value="source">Format source</option><option>9:16</option><option>16:9</option><option>1:1</option><option>4:5</option></select>
-          <button class="btn" id="prepBtn">1 · Préparer</button>
-          <button class="btn" id="brollBtn">2 · B-roll</button>
-          <button class="btn pri" id="renderBtn">3 · Rendre</button>
-        </div>
-      </div>
-      <div class="sec"><h3>Format de contenu</h3><div class="cards" id="styles"></div></div>
-      <div class="stats" id="stats"></div>
-      <div class="tabs" id="tabs"></div>
-      <div class="stage"><video id="player" controls playsinline></video></div>
-      <div class="tl" id="timeline" style="margin-top:12px"></div>
-      <div class="sec" style="margin-top:14px"><h3>Console</h3><div class="log" id="log">—</div></div>
-    </div>
-  </main>
-
-  <div class="insp">
-    <div class="sec"><h3>Plan de montage</h3>
-      <div class="row"><button class="btn pri" id="saveBtn" disabled>Enregistrer le plan</button>
-        <button class="btn" id="rawBtn">JSON brut</button></div>
-    </div>
-    <div id="inspector" class="muted">Aucun plan — lance « Préparer ».</div>
-    <textarea id="raw" hidden style="min-height:60vh"></textarea>
-  </div>
-</div>
+<div class="modal" id="modal"><div class="box">
+  <div class="bar"><code id="mcode"></code><button class="btn" id="mreplay">Rejouer</button><button class="btn" id="mtab">Onglet</button><button class="btn" id="mclose">Fermer</button></div>
+  <div class="stage" id="mstage"><iframe id="mframe"></iframe></div>
+</div></div>
+<div class="toast" id="toast"></div>
 
 <script>
-const $ = s => document.querySelector(s);
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const api = (u, body) => fetch(u, body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {}).then(r => r.json());
-let S = {video: null, style: null, project: null, plan: null, sel: null, raw: false};
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const ago = ts => { if (!ts) return "—"; const d = Date.now() / 1000 - ts;
+  return d < 60 ? "à l'instant" : d < 3600 ? `il y a ${Math.round(d / 60)} min` : d < 86400 ? `il y a ${Math.round(d / 3600)} h` : `il y a ${Math.round(d / 86400)} jours`; };
+const size = b => b > 1e9 ? (b / 1e9).toFixed(1) + " GB" : b > 1e6 ? (b / 1e6).toFixed(1) + " MB" : Math.round(b / 1e3) + " KB";
+const tc = t => { t = Math.max(0, t || 0); return `${String(Math.floor(t / 60)).padStart(2, "0")}:${(t % 60).toFixed(2).padStart(5, "0")}`; };
+const toast = m => { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2200); };
+const STATE = {last: null, job: null};
+const statusPill = s => `<span class="pill ${s === "prêt à relire" ? "ok" : s === "livré" ? "y" : ""}">${esc(s)}</span>`;
 
-async function loadState() {
-  const st = await api("/api/state");
-  $("#root").textContent = st.root;
-  $("#videos").innerHTML = st.videos.map(v => `<div class="item ${v.name === S.video ? "on" : ""}" data-v="${v.name}">
-     <span>${v.name}</span><span class="dot ${v.done ? "d" : v.prepped ? "p" : ""}" title="${v.done ? "monté" : v.prepped ? "préparé" : "brut"}"></span></div>`).join("")
-    || `<div class="muted">Aucune vidéo trouvée.</div>`;
-  document.querySelectorAll("#videos .item").forEach(el => el.onclick = () => openProject(el.dataset.v));
-  $("#themeSel").innerHTML = st.themes.map(t => `<option ${t === st.theme ? "selected" : ""}>${t}</option>`).join("");
-  S.styles = st.styles;
-  renderStyles();
-}
-
-function renderStyles() {
-  const order = ["pub", "ugc", "documentaire", "intro-youtube", "formation", "produit"];
-  const list = [...S.styles].sort((a, b) => ((order.indexOf(a.name) + 1) || 99) - ((order.indexOf(b.name) + 1) || 99));
-  $("#styles").innerHTML = list.map(s => `<div class="card ${s.name === S.style ? "on" : ""}" data-s="${s.name}">
-      <h4>${s.name}</h4><p>${s.description || ""}</p></div>`).join("");
-  document.querySelectorAll("#styles .card").forEach(el => el.onclick = () => { S.style = el.dataset.s; renderStyles(); });
-}
-
-async function openProject(name) {
-  S.video = name;
-  const p = await api("/api/project?video=" + encodeURIComponent(name));
-  S.project = p; S.plan = p.plan; S.style = S.style && S.video === name ? S.style : (p.style || S.style || "default");
-  $("#noproj").hidden = true; $("#proj").hidden = false;
-  $("#title").textContent = name;
-  const st = p.edl;
-  $("#stats").innerHTML = [
-    ["Durée brute", st && st.source_duration ? st.source_duration + " s" : "—"],
-    ["Après coupe", st && st.kept_duration ? st.kept_duration + " s" : "—"],
-    ["Coupes", st && st.segments ? st.segments : "—"],
-    ["Visuels", p.plan ? p.plan.broll.filter(b => b.file).length + "/" + p.plan.broll.length : "—"]
-  ].map(([k, v]) => `<div class="stat"><small>${k}</small><b>${v}</b></div>`).join("");
-  const keys = Object.keys(p.files);
-  $("#tabs").innerHTML = keys.map(k => `<div class="tab" data-k="${k}">${{source: "Rush", cut: "Coupé", final: "Final"}[k]}</div>`).join("");
-  document.querySelectorAll("#tabs .tab").forEach(el => el.onclick = () => showFile(el.dataset.k));
-  showFile(keys.includes("final") ? "final" : keys.includes("cut") ? "cut" : "source");
-  renderStyles(); renderPlan(); loadState();
-}
-
-function showFile(k) {
-  document.querySelectorAll("#tabs .tab").forEach(t => t.classList.toggle("on", t.dataset.k === k));
-  $("#player").src = S.project.files[k] + "&t=" + Date.now();
-}
-
-function renderPlan() {
-  const P = S.plan;
-  $("#saveBtn").disabled = !P;
-  if (!P) { $("#inspector").innerHTML = "Aucun plan — lance « Préparer »."; $("#timeline").innerHTML = ""; return; }
-  const D = P.duration || 1, pct = t => (100 * t / D).toFixed(2) + "%";
-  const lane = (label, items, cls, kind) => `<div class="track"><span>${label}</span><div class="lane">${items.map((x, i) =>
-      `<div class="blk ${cls}" data-k="${kind}" data-i="${i}" title="${x.query || x.text || x.kind || x.name || ""}"
-        style="left:${pct(x.start ?? x.t)};width:${pct(Math.max(0.08, Math.min(D, x.end ?? (x.t + .2)) - (x.start ?? x.t)))}"></div>`).join("")}</div></div>`;
-  $("#timeline").innerHTML = lane("Zooms", P.zooms, "z", "zooms") + lane("B-roll", P.broll, "b", "broll")
-    + lane("Anim.", P.motion, "m", "motion") + lane("SFX +", P.sfx || [], "s", "sfx") + `<div class="head" id="head"></div>`;
-  document.querySelectorAll(".blk").forEach(el => el.onclick = () => {
-    const it = P[el.dataset.k][+el.dataset.i];
-    $("#player").currentTime = it.start ?? it.t; S.sel = el.dataset.k + el.dataset.i; renderInspector();
-  });
-  renderInspector();
-}
-
-function field(sec, i, key, val, opts) {
-  const id = `${sec}.${i}.${key}`;
-  if (opts) return `<div><label>${key}</label><select data-f="${id}">${opts.map(o => `<option ${o === val ? "selected" : ""}>${o}</option>`).join("")}</select></div>`;
-  return `<div><label>${key}</label><input data-f="${id}" value="${String(val ?? "").replace(/"/g, "&quot;")}"></div>`;
-}
-
-function renderInspector() {
-  const P = S.plan;
-  if (S.raw) { $("#raw").hidden = false; $("#inspector").hidden = true; $("#raw").value = JSON.stringify(P, null, 2); return; }
-  $("#raw").hidden = true; $("#inspector").hidden = false;
-  const fmt = t => (+t).toFixed(1) + "s";
-  let h = `<div class="ent"><label class="muted">Mots mis en valeur (virgules)</label>
-     <input data-f="emphasis_words" value="${(P.emphasis_words || []).join(", ")}"></div>`;
-  h += `<h3 class="muted" style="font-size:11px;letter-spacing:1.4px;margin:14px 0 8px">ANIMATIONS</h3>`;
-  h += P.motion.map((m, i) => `<div class="ent ${S.sel === "motion" + i ? "sel" : ""}"><div class="muted">${m.type} · ${fmt(m.start)} → ${fmt(m.end)}</div>
-     ${m.type === "hyperframes" ? `<div>${m.name}</div>` : field("motion", i, "text", m.text)}</div>`).join("");
-  h += `<h3 class="muted" style="font-size:11px;letter-spacing:1.4px;margin:14px 0 8px">ILLUSTRATIONS</h3>`;
-  h += P.broll.map((b, i) => `<div class="ent ${S.sel === "broll" + i ? "sel" : ""}">
-     <div class="muted">#${i} · ${fmt(b.start)} → ${fmt(b.end)} ${b.file ? "✅" : "⏳"}</div>
-     <div class="muted" style="font-size:12px;margin:4px 0">« ${b.context || ""} »</div>
-     ${field("broll", i, "query", b.query)}
-     <div class="grid2">${field("broll", i, "provider", b.provider, ["auto", "pexels", "pixabay", "wikimedia", "higgsfield", "flow", "veo", "magnific"])}
-     ${field("broll", i, "layout", b.layout, ["full", "pip"])}</div>
-     ${["higgsfield", "flow", "veo", "magnific"].includes(b.provider) ? field("broll", i, "prompt", b.prompt) : ""}</div>`).join("");
-  h += `<h3 class="muted" style="font-size:11px;letter-spacing:1.4px;margin:14px 0 8px">ZOOMS</h3>`;
-  h += P.zooms.map((z, i) => `<div class="ent ${S.sel === "zooms" + i ? "sel" : ""}"><div class="grid2">
-     ${field("zooms", i, "kind", z.kind, ["punch", "pulse", "ease"])}${field("zooms", i, "scale", z.scale)}</div></div>`).join("");
-  $("#inspector").innerHTML = h;
-  document.querySelectorAll("[data-f]").forEach(el => el.onchange = () => {
-    const path = el.dataset.f.split(".");
-    if (path[0] === "emphasis_words") { P.emphasis_words = el.value.split(",").map(s => s.trim()).filter(Boolean); return; }
-    const [sec, i, key] = path;
-    P[sec][+i][key] = key === "scale" ? parseFloat(el.value) : el.value;
-    if (sec === "broll" && key !== "layout") P[sec][+i].file = null;
-    renderPlan();
-  });
-}
-
-async function run(action, extra = {}) {
-  const job = await api("/api/run", {action, video: S.video, style: S.style, aspect: $("#aspect").value, ...extra});
-  if (job.error) return alert(job.error);
-  $("#status").textContent = action + "…"; $("#status").classList.add("run");
-  document.querySelectorAll(".btn").forEach(b => b.disabled = true);
+// ---------- tâches ----------
+async function run(action, extra = {}, then) {
+  const job = await api("/api/run", {action, ...extra});
+  if (job.error) return toast(job.error);
+  STATE.job = job.id; toast(job.label + "…");
   const tick = async () => {
     const j = await api("/api/job?id=" + job.id);
-    $("#log").textContent = j.log.join("\n") || "…"; $("#log").scrollTop = 1e9;
+    const pill = $("#jobpill");
+    pill.textContent = j.status === "running" ? `${j.label} · ${(j.log.at(-1) || "").replace("[monteur] ", "")}` : `${j.label} ${j.status === "done" ? "✓" : "✗"}`;
+    pill.classList.toggle("run", j.status === "running");
+    const lg = $("#joblog"); if (lg) { lg.textContent = j.log.join("\n"); lg.scrollTop = 1e9; }
     if (j.status === "running") return setTimeout(tick, 1000);
-    $("#status").textContent = j.status === "done" ? "terminé ✓" : "erreur"; $("#status").classList.remove("run");
-    document.querySelectorAll(".btn").forEach(b => b.disabled = false);
-    if (S.video) openProject(S.video); else loadState();
+    toast(j.status === "done" ? `${j.label} terminé ✓` : `${j.label} : erreur`);
+    then ? then(j) : route();
   };
   tick();
 }
 
-$("#prepBtn").onclick = () => run("prep");
-$("#brollBtn").onclick = async () => { await savePlan(); run("broll"); };
-$("#renderBtn").onclick = async () => { await savePlan(); run("render"); };
-$("#saveBtn").onclick = () => savePlan(true);
-$("#rawBtn").onclick = () => { if (S.raw) { try { S.plan = JSON.parse($("#raw").value); } catch (e) { return alert("JSON invalide"); } } S.raw = !S.raw; renderPlan(); };
-async function savePlan(notify) {
-  if (!S.plan) return;
-  if (S.raw) S.plan = JSON.parse($("#raw").value);
-  await api("/api/plan", {video: S.video, plan: S.plan});
-  if (notify) { $("#status").textContent = "plan enregistré ✓"; }
+// ---------- routeur ----------
+async function route() {
+  const [, view = "projets", ...rest] = location.hash.split("/");
+  const arg = decodeURIComponent(rest.join("/"));
+  const top = {projets: "projets", projet: "projets", retours: "projets", studio: "studio", bibliotheques: "bibliotheques",
+               style: "bibliotheques", format: "bibliotheques", activite: "activite"}[view] || "projets";
+  $$("#nav a").forEach(a => a.classList.toggle("on", a.dataset.v === top));
+  const V = {projets: vProjets, projet: vProjet, retours: vRetours, studio: vStudio, bibliotheques: vBiblio,
+             style: vStyle, format: vFormat, activite: vActivite}[view] || vProjets;
+  window.scrollTo(0, 0);
+  await V(arg);
 }
-$("#cloneBtn").onclick = () => run("style", {sources: $("#refs").value.split("\n").map(s => s.trim()).filter(Boolean), name: $("#refName").value || "mon-style"});
-$("#charteBtn").onclick = () => run("charte", {sources: $("#charteSrc").value.split("\n").map(s => s.trim()).filter(Boolean), name: $("#charteName").value || "ma-charte"});
-$("#themeSel").onchange = async e => { await api("/api/theme", {theme: e.target.value}); $("#theme").href = "/theme.css?name=" + e.target.value + "&t=" + Date.now(); };
-$("#player").ontimeupdate = () => {
-  const h = $("#head"); if (!h || !S.plan) return;
-  const lane = document.querySelector(".lane"); if (!lane) return;
-  h.style.left = (lane.offsetLeft + lane.offsetWidth * ($("#player").currentTime / (S.plan.duration || 1))) + "px";
-};
-loadState();
+window.addEventListener("hashchange", route);
+$("#refresh").onclick = () => { route(); toast("Actualisé"); };
+$("#jobpill").onclick = () => location.hash = "#/activite";
+
+// ---------- Projets ----------
+const F = {q: "", fam: "", type: "", fmt: "", st: "", sort: "mod", stale: false, hideRaw: false};
+async function vProjets() {
+  const t0 = performance.now();
+  const data = await api("/api/projects");
+  STATE.projects = data.projects;
+  const s = data.stats, ms = Math.round(performance.now() - t0);
+  const opts = (k, label) => `<select data-f="${k}"><option value="">${label}</option>${[...new Set(data.projects.map(p => p[k]))].map(v => `<option ${F[k === "family" ? "fam" : k === "status" ? "st" : k === "format" ? "fmt" : k] === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`;
+  $("#view").innerHTML = `
+    <div class="stats">
+      <div class="stat"><b>${s.projets}</b><span class="cap">projets</span><small>${data.projects.filter(p => p.status === "brut").length} rush(s) brut(s)</small></div>
+      <div class="stat"><b style="color:var(--accent)">${s.avec_rendu}</b><span class="cap">avec un rendu</span><small>sur ${s.projets} projets</small></div>
+      <div class="stat"><b style="color:var(--danger)">${s.perimes}</b><span class="cap">rendus périmés</span><small>à re-rendre</small></div>
+      <div class="stat"><b>${size(s.disque)}</b><span class="cap">disque rendus</span><small>${s.retours} retour(s) ouvert(s)</small></div>
+    </div>
+    <h1 class="page">Projets<small>${s.projets} / ${s.projets}</small></h1>
+    <p class="sub">Le système de fichiers fait foi. Relevé ${ago(Date.now() / 1000)} en ${ms} ms.</p>
+    <div class="filters">
+      <input type="search" id="q" placeholder="Chercher un nom ou un slug" value="${esc(F.q)}">
+      ${opts("family", "Toutes les familles")}${opts("type", "Tous les types")}${opts("format", "Tous les formats")}${opts("status", "Tous les états")}
+      <select id="sort"><option value="mod">Modifié récemment</option><option value="name" ${F.sort === "name" ? "selected" : ""}>Nom</option><option value="status" ${F.sort === "status" ? "selected" : ""}>État</option></select>
+      <label class="chk"><input type="checkbox" id="stale" ${F.stale ? "checked" : ""}> Périmés seuls</label>
+      <label class="chk"><input type="checkbox" id="hideRaw" ${F.hideRaw ? "checked" : ""}> Masquer les rushs bruts</label>
+    </div>
+    <div class="grid" id="grid"></div>`;
+  const key = {family: "fam", type: "type", format: "fmt", status: "st"};
+  $$(".filters select[data-f]").forEach(el => el.onchange = () => { F[key[el.dataset.f]] = el.value; drawGrid(); });
+  $("#q").oninput = e => { F.q = e.target.value; drawGrid(); };
+  $("#sort").onchange = e => { F.sort = e.target.value; drawGrid(); };
+  $("#stale").onchange = e => { F.stale = e.target.checked; drawGrid(); };
+  $("#hideRaw").onchange = e => { F.hideRaw = e.target.checked; drawGrid(); };
+  drawGrid();
+}
+function drawGrid() {
+  let ps = STATE.projects.filter(p => (!F.q || (p.title + p.slug).toLowerCase().includes(F.q.toLowerCase()))
+    && (!F.fam || p.family === F.fam) && (!F.type || p.type === F.type) && (!F.fmt || p.format === F.fmt)
+    && (!F.st || p.status === F.st) && (!F.stale || p.stale) && (!F.hideRaw || p.status !== "brut"));
+  ps.sort((a, b) => F.sort === "name" ? a.title.localeCompare(b.title) : F.sort === "status" ? a.status.localeCompare(b.status) : b.modified - a.modified);
+  $("#grid").innerHTML = ps.map(p => `
+    <div class="card" data-v="${esc(p.video)}">
+      <div class="hd"><div><h3>${esc(p.title)}</h3><small>${new Date(p.modified * 1000).toLocaleDateString("fr-FR", {day: "numeric", month: "long", year: "numeric"})}</small></div>
+        <div class="tags"><span class="tag fam">${esc(p.family)}</span><span class="tag">${esc(p.type)}</span></div></div>
+      <div class="thumb" style="background-image:url('${p.thumb}')">
+        ${p.last ? `<span class="b l">${p.last.quality.toUpperCase()}</span>` : ""}<span class="b r">${esc(p.format)}</span></div>
+      <div class="ft">${statusPill(p.status)}${p.stale ? '<span class="pill r">périmé</span>' : ""}
+        ${p.last ? `<span class="dotsep">rendu ${ago(p.last.mtime)}</span>` : ""}
+        <span>${p.deliverables} livrable(s)</span>${p.feedback.open ? `<span class="pill y">${p.feedback.open} retour(s)</span>` : p.feedback.total ? `<span>${p.feedback.total} retour(s) appliqué(s)</span>` : ""}</div>
+    </div>`).join("") || `<div class="empty">Aucun projet. Dépose des rushs dans le dossier surveillé.</div>`;
+  $$("#grid .card").forEach(c => c.onclick = () => location.hash = "#/projet/" + encodeURIComponent(c.dataset.v));
+}
+
+// ---------- Projet ----------
+async function vProjet(video) {
+  const p = await api("/api/project?video=" + encodeURIComponent(video));
+  if (p.error) return $("#view").innerHTML = `<div class="empty">${esc(p.error)}</div>`;
+  STATE.p = p;
+  const sel = STATE.sel && p.renders.find(r => r.name === STATE.sel) || p.renders.at(-1);
+  const verif = sel && sel === p.renders.at(-1) ? p.verif : null;
+  $("#view").innerHTML = `
+    <a class="back" href="#/projets">← Projets</a>
+    <div class="row" style="justify-content:space-between;margin:6px 0 4px">
+      <h1 class="page">${esc(p.title)}</h1>
+      <div class="tags"><span class="tag fam">${esc(p.family)}</span><span class="tag">${esc(p.type)}</span>${statusPill(p.status)}</div></div>
+    <div class="row" style="margin-bottom:18px"><span class="mono muted" style="font-size:12px">${esc(p.dir)}</span>
+      <button class="btn ghost" id="cp">Copier le chemin</button></div>
+    <span class="cap">Livrables</span>
+    <div class="deliv" style="margin-top:10px">${p.renders.slice().reverse().map(r => `<div class="${sel && r.name === sel.name ? "on" : ""}" data-r="${esc(r.name)}">
+      <span>${r.quality === "master" ? "◆" : "◇"}</span><span>${esc(r.name)}<small>${r.quality} · ${size(r.size)} · ${ago(r.mtime)}${r.verif ? ` · vérif ${r.verif.ok ? "✓" : "✗"}${r.verif.warn ? ` ${r.verif.warn}⚠` : ""}` : ""}</small></span></div>`).join("")
+      || `<div style="cursor:default">Aucun rendu — lance « Préparer » puis « Rendu draft + vérif ».</div>`}</div>
+    <div class="split">
+      <div class="player"><video id="pv" controls playsinline src="${sel ? sel.url : p.files.cut || p.files.source}"></video></div>
+      <div>
+        <div class="row" style="gap:8px;margin-bottom:6px"><span class="cap">${esc(p.slug)}</span>${sel ? `<span class="pill ${sel.quality === "master" ? "ok" : ""}">${sel.quality === "master" ? "Master" : "Draft"}</span>` : ""}<span class="cap">${p.renders.length} version(s)</span></div>
+        <div class="mono" style="font-size:13px">${sel ? "renders/" + esc(sel.name) : "rush : " + esc(p.video)}</div>
+        <div class="mono muted" style="font-size:12px;margin:4px 0 16px">${sel ? `${size(sel.size)} · ${esc(p.format)} · ${ago(sel.mtime)}` : esc(p.format)}${p.edl ? ` · ${p.edl.source_duration}s → ${p.edl.kept_duration}s` : ""}</div>
+        <div class="row"><a class="btn y" href="#/retours/${encodeURIComponent(p.video)}">Apporter des modifications</a>
+          <a class="btn ghost" href="#/studio/${encodeURIComponent(p.video)}">Ouvrir le Studio</a>
+          ${sel ? `<a class="btn ghost" href="${sel.url}" target="_blank">Ouvrir dans un onglet</a>` : ""}</div>
+        ${verif ? `<div class="checks" style="margin-top:18px"><span class="cap">Vérification du rendu</span>${verif.checks.map(c => `<div><i>${{ok: "✅", warn: "⚠️", error: "❌"}[c.status]}</i>${esc(c.label)}<span class="muted">${esc(c.detail)}</span></div>`).join("")}</div>` : ""}
+        ${p.feedback.total ? `<p class="muted" style="margin-top:14px">${p.feedback.open} retour(s) en attente sur ${p.feedback.total}.</p>` : ""}
+      </div>
+    </div>
+    <div class="panel actions" style="margin-top:22px"><span class="cap">Actions</span>
+      <div class="row" style="margin-bottom:10px"><span class="cap acc">Pendant le montage</span>
+        <select id="stsel">${p.styles.map(s => `<option ${s === p.style ? "selected" : ""}>${s}</option>`).join("")}</select>
+        <select id="asp"><option value="source">Format du style</option><option>9:16</option><option>16:9</option><option>1:1</option><option>4:5</option></select></div>
+      <div class="act"><button class="btn" data-a="prep">Préparer</button><p>Transcrit, coupe blancs / hésitations / prises ratées, construit le plan et cherche les illustrations.</p></div>
+      <div class="act"><button class="btn y" data-a="draft">Rendu draft + vérif</button><p>Le geste courant. Rend en qualité brouillon (demi-résolution, ~4× plus vite) puis contrôle le fichier produit : durée, noirs, blancs oubliés, saturation, mots coupés, visuels manquants.</p></div>
+      <div class="act"><button class="btn" data-a="render">Rendu master</button><p>Qualité finale, versionnée dans <span class="mono">renders/</span> et copiée en <span class="mono">final.mp4</span>.</p></div>
+      <div class="act"><button class="btn" data-a="broll">Chercher les B-roll</button><p>Télécharge les illustrations du plan encore vides (Pexels, Pixabay, Wikimedia).</p></div>
+      <div class="act"><button class="btn" data-a="livre">Marquer livré</button><p>Passe le projet à l'état « livré ».</p></div>
+      <div class="log" id="joblog" style="margin-top:10px">—</div>
+    </div>`;
+  $("#cp").onclick = () => { navigator.clipboard?.writeText(p.dir); toast("Chemin copié"); };
+  $$(".deliv div[data-r]").forEach(d => d.onclick = () => { STATE.sel = d.dataset.r; vProjet(video); });
+  $$(".actions [data-a]").forEach(b => b.onclick = () => {
+    const a = b.dataset.a, base = {video: p.video, style: $("#stsel").value, aspect: $("#asp").value};
+    if (a === "draft") run("render", {...base, draft: true});
+    else if (a === "livre") run("projet", {video: p.video, etat: "livré"});
+    else run(a, base);
+  });
+}
+
+// ---------- Retours frame par frame ----------
+async function vRetours(video) {
+  const p = await api("/api/project?video=" + encodeURIComponent(video));
+  STATE.p = p;
+  const r = p.renders.at(-1);
+  const src = r ? r.url : p.files.cut || p.files.source;
+  $("#view").innerHTML = `
+    <div class="fb">
+      <div>
+        <div class="player" style="min-height:420px"><video id="fv" playsinline src="${src}"></video></div>
+        <div class="prog" id="prog"><i id="pbar"></i></div>
+        <div class="ctl"><button class="btn" data-s="-1">−1s</button><button class="btn" data-f="-1">−1 img</button>
+          <button class="btn y" id="play">▶</button><button class="btn" data-f="1">+1 img</button><button class="btn" data-s="1">+1s</button>
+          <span class="tc" id="tc">00:00.00 · f0000</span></div>
+        <div class="kbd" id="vinfo" style="margin-top:6px"></div>
+      </div>
+      <div>
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0;font-size:20px">Retours frame par frame · <span style="color:var(--accent)">${esc(p.slug)}</span></h2>
+          <div class="row"><a class="back" href="#/projet/${encodeURIComponent(p.video)}">← Le projet</a><a class="back" href="#" id="fs">Plein écran</a></div></div>
+        <div class="row" style="margin:14px 0"><span class="cap">Projet</span><select id="pj">${(STATE.projects || [{video: p.video}]).map(x => `<option ${x.video === p.video ? "selected" : ""}>${esc(x.video)}</option>`).join("")}</select>
+          <span class="cap">Rendu</span><select id="rd">${p.renders.slice().reverse().map(x => `<option value="${x.url}">${esc(x.name)}</option>`).join("") || "<option>rush coupé</option>"}</select>
+          <span class="cap">FPS</span><input id="fps" value="30" style="width:56px"></div>
+        <p class="muted" style="font-size:13px">Mets la vidéo sur la frame exacte, écris ton retour, Entrée ou « Ajouter ». Clique un retour pour re-sauter à sa frame. Tout est enregistré dans le projet (<span class="mono">review/</span>). Quand c'est fini : « Copier pour Claude » et colle-le dans la conversation, ou « Envoyer au montage ».<br>
+          <span class="kbd">Espace = lecture · ← → = image par image · ↑ = ajouter un retour</span></p>
+        <div class="row" style="flex-wrap:nowrap"><input id="fbtxt" style="flex:1;padding:14px" placeholder="Ton retour sur cette frame… (Entrée pour ajouter)"><button class="btn y" id="fbadd" style="padding:14px 18px">Ajouter</button></div>
+        <div class="fbl" id="fbl" style="margin-top:14px"></div>
+        <div class="row" style="margin-top:14px"><button class="btn" id="copy">⧉ Copier pour Claude</button><button class="btn" id="dl">⬇ Télécharger .json</button><button class="btn y" id="send">Envoyer au montage</button></div>
+      </div>
+    </div>`;
+  const v = $("#fv"), fps = () => +$("#fps").value || 30;
+  const upd = () => { $("#tc").textContent = `${tc(v.currentTime)} · f${String(Math.round(v.currentTime * fps())).padStart(4, "0")}`;
+    $("#pbar").style.width = (100 * v.currentTime / (v.duration || 1)) + "%"; $("#play").textContent = v.paused ? "▶" : "❚❚"; };
+  v.ontimeupdate = upd; v.onplay = upd; v.onpause = upd;
+  v.onloadedmetadata = () => { $("#vinfo").textContent = `prêt · ${tc(v.duration)} · ${Math.round(v.duration * fps())} frames · ${v.videoWidth}×${v.videoHeight}`; drawFb(); };
+  $("#play").onclick = () => v.paused ? v.play() : v.pause();
+  $$("[data-s]").forEach(b => b.onclick = () => v.currentTime += +b.dataset.s);
+  $$("[data-f]").forEach(b => b.onclick = () => { v.pause(); v.currentTime += +b.dataset.f / fps(); });
+  $("#prog").onclick = e => v.currentTime = (e.offsetX / e.currentTarget.offsetWidth) * v.duration;
+  $("#rd").onchange = e => v.src = e.target.value;
+  $("#pj").onchange = e => location.hash = "#/retours/" + encodeURIComponent(e.target.value);
+  $("#fs").onclick = e => { e.preventDefault(); v.requestFullscreen?.(); };
+  const add = async () => { const t = $("#fbtxt").value.trim(); if (!t) return;
+    const r2 = await api("/api/review", {video: p.video, action: "add", t: v.currentTime, text: t, fps: fps(), render: $("#rd").selectedOptions[0]?.text});
+    p.review = r2; $("#fbtxt").value = ""; drawFb(); toast("Retour ajouté"); };
+  $("#fbadd").onclick = add;
+  $("#fbtxt").onkeydown = e => { if (e.key === "Enter") add(); e.stopPropagation(); };
+  document.onkeydown = e => { if (!$("#fv") || e.target.tagName === "INPUT") return;
+    if (e.code === "Space") { e.preventDefault(); $("#play").click(); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); v.pause(); v.currentTime -= 1 / fps(); }
+    if (e.key === "ArrowRight") { e.preventDefault(); v.pause(); v.currentTime += 1 / fps(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); v.pause(); $("#fbtxt").focus(); } };
+  function drawFb() {
+    const items = p.review.items;
+    $("#prog").querySelectorAll("b").forEach(b => b.remove());
+    items.forEach(i => { const m = document.createElement("b"); m.style.left = (100 * i.t / (v.duration || 1)) + "%"; $("#prog").appendChild(m); });
+    $("#fbl").innerHTML = items.map(i => `<div data-t="${i.t}"><code>${tc(i.t)} · f${String(i.frame).padStart(4, "0")}</code><p>${esc(i.text)}</p>
+      <span class="pill ${i.status === "appliqué" ? "ok" : i.status === "envoyé" ? "y" : ""}">${i.status}</span><span class="x" data-del="${i.id}">✕</span></div>`).join("")
+      || `<p class="muted">Aucun retour pour l'instant.</p>`;
+    $$("#fbl [data-t]").forEach(d => d.onclick = e => { if (e.target.dataset.del) return; v.pause(); v.currentTime = +d.dataset.t; });
+    $$("#fbl [data-del]").forEach(x => x.onclick = async () => { p.review = await api("/api/review", {video: p.video, action: "delete", id: +x.dataset.del}); drawFb(); });
+  }
+  $("#copy").onclick = async () => { const r2 = await api("/api/review", {video: p.video, action: "mark", id: -1});
+    await navigator.clipboard?.writeText(r2.text); toast("Copié pour Claude"); };
+  $("#dl").onclick = () => { const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(p.review, null, 2)], {type: "application/json"}));
+    a.download = `${p.slug}-retours.json`; a.click(); };
+  $("#send").onclick = async () => { p.review = await api("/api/review", {video: p.video, action: "send"}); drawFb(); toast("Envoyé au montage — Claude les appliquera"); };
+  drawFb();
+}
+
+// ---------- Studio (éditeur de plan) ----------
+async function vStudio(video) {
+  if (!video) {
+    const d = await api("/api/projects"); STATE.projects = d.projects;
+    if (!d.projects.length) return $("#view").innerHTML = `<div class="empty">Aucun rush.</div>`;
+    return location.hash = "#/studio/" + encodeURIComponent(d.projects.sort((a, b) => b.modified - a.modified)[0].video);
+  }
+  const p = await api("/api/project?video=" + encodeURIComponent(video));
+  STATE.p = p; STATE.plan = p.plan; STATE.selI = null;
+  const lib = STATE.lib || (STATE.lib = await api("/api/library"));
+  const src = p.files.cut || p.files.source;
+  const words = p.transcript?.words || [];
+  $("#view").innerHTML = `
+    <div class="row" style="justify-content:space-between;margin-bottom:14px">
+      <div class="row"><h1 class="page" style="font-size:30px">Studio</h1>
+        <select id="sp">${(STATE.projects || [{video}]).map(x => `<option ${x.video === video ? "selected" : ""}>${esc(x.video)}</option>`).join("")}</select></div>
+      <div class="row"><button class="btn" id="save" ${p.plan ? "" : "disabled"}>Enregistrer le plan</button>
+        <button class="btn y" id="draft">Rendu draft + vérif</button><a class="btn ghost" href="#/projet/${encodeURIComponent(video)}">Le projet →</a></div></div>
+    ${p.plan ? "" : `<div class="panel">Pas encore de plan. <button class="btn y" id="prep">Préparer ce rush</button></div>`}
+    <div class="editor">
+      <div>
+        <div class="split" style="grid-template-columns:1fr 1fr">
+          <div class="panel" style="margin:0"><div class="cap"><span class="acc">transcript.json</span> · ${words.length} mots · ce que le système lit</div>
+            <div class="tscript" id="ts" style="margin-top:10px">${words.map((w, i) => `<span data-i="${i}" data-t="${w.start}">${esc(w.w)}</span>`).join(" ") || '<span class="muted">—</span>'}</div></div>
+          <div class="player" style="min-height:220px"><video id="sv" controls playsinline src="${src}"></video></div>
+        </div>
+        <div class="tl" id="tl"></div>
+        <div class="log" id="joblog" style="margin-top:12px">—</div>
+      </div>
+      <div id="insp"></div>
+    </div>`;
+  $("#sp").onchange = e => location.hash = "#/studio/" + encodeURIComponent(e.target.value);
+  $("#prep") && ($("#prep").onclick = () => run("prep", {video}));
+  $("#save").onclick = () => savePlan(true);
+  $("#draft").onclick = async () => { await savePlan(); run("render", {video, draft: true}); };
+  const v = $("#sv");
+  $$("#ts span[data-t]").forEach(s => s.onclick = () => v.currentTime = +s.dataset.t);
+  v.ontimeupdate = () => {
+    const t = v.currentTime, D = STATE.plan?.duration || v.duration || 1;
+    const h = $("#head"); if (h) { const lane = $(".lane"); h.style.left = (lane.offsetLeft + lane.offsetWidth * t / D) + "px"; }
+    let cur = -1; words.forEach((w, i) => { if (w.start <= t) cur = i; });
+    $$("#ts span[data-i]").forEach(s => { const i = +s.dataset.i; s.classList.toggle("on", i === cur); s.classList.toggle("past", i < cur); });
+  };
+  drawTimeline(); drawInspector(lib);
+}
+function drawTimeline() {
+  const p = STATE.p, P = STATE.plan; if (!P) return $("#tl").innerHTML = "";
+  const D = P.duration || 1, pct = t => (100 * Math.max(0, t) / D).toFixed(3) + "%";
+  const blk = (cls, s, e, label, data = "") => `<div class="blk ${cls}" ${data} title="${esc(label)}" style="left:${pct(s)};width:${pct(Math.max(.12, Math.min(D, e) - s))}">${esc(label)}</div>`;
+  let off = 0; const cuts = (p.keep || []).slice(0, -1).map(([s, e]) => (off += e - s));
+  $("#tl").innerHTML = `<div class="hdr">MONTEUROS · MONTAGE EN COURS</div>
+    <div class="trk"><span>VO · vidéo</span><div class="lane">${cuts.map(c => `<div class="blk cut" title="coupe à ${c.toFixed(2)}s" style="left:${pct(c)}"></div>`).join("")}</div></div>
+    <div class="trk"><span>TXT · sous-titres</span><div class="lane">${(p.subs || []).map(s => blk("sub", s.start, s.end, s.text)).join("")}</div></div>
+    <div class="trk"><span>SFX · sons</span><div class="lane">${(p.sfx_events || []).map(s => blk("fx", s.t, s.t + .5, s.name)).join("")}</div></div>
+    <div class="trk"><span>B-roll · illus</span><div class="lane">${P.broll.map((b, i) => blk("br", b.start, b.end, (b.file ? "" : "⏳ ") + b.query, `data-k="broll" data-i="${i}"`)).join("")}</div></div>
+    <div class="trk"><span>Zooms</span><div class="lane">${P.zooms.map((z, i) => blk("zm", z.start, z.end, z.kind, `data-k="zooms" data-i="${i}"`)).join("")}</div></div>
+    <div class="trk"><span>Anim · cartes</span><div class="lane">${P.motion.map((m, i) => blk("an", m.start, m.end, m.name || m.text || m.type, `data-k="motion" data-i="${i}"`)).join("")}</div></div>
+    <div class="head" id="head"></div>`;
+  const lane = $("#tl .lane"); $("#head").style.left = lane.offsetLeft + "px";
+  $$("#tl .blk[data-k]").forEach(b => b.onclick = () => { const it = STATE.plan[b.dataset.k][+b.dataset.i];
+    $("#sv").currentTime = it.start; STATE.selI = b.dataset.k + b.dataset.i; drawInspector(STATE.lib); });
+}
+function drawInspector(lib) {
+  const P = STATE.plan; const box = $("#insp"); if (!box) return;
+  if (!P) return box.innerHTML = "";
+  const f = (sec, i, k, val, opts) => opts ? `<label>${k}</label><select data-f="${sec}.${i}.${k}">${opts.map(o => `<option ${o === val ? "selected" : ""}>${o}</option>`).join("")}</select>`
+    : `<label>${k}</label><input data-f="${sec}.${i}.${k}" value="${esc(val ?? "")}">`;
+  box.innerHTML = `
+    <div class="panel"><span class="cap acc">Poser une carte animée</span>
+      <select id="cardsel" style="width:100%">${lib.cards.map(c => `<option value="${c.id}">${esc(c.category)} — ${esc(c.label)}</option>`).join("")}</select>
+      <div id="cardvars"></div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="cardprev">Aperçu</button><button class="btn y" id="cardput">Poser à la tête de lecture</button></div></div>
+    <div class="panel"><span class="cap">Mots mis en valeur</span><input id="emw" style="width:100%" value="${esc((P.emphasis_words || []).join(", "))}"></div>
+    <div class="cap" style="margin:4px 0 8px">Animations</div>
+    ${P.motion.map((m, i) => `<div class="ent ${STATE.selI === "motion" + i ? "sel" : ""}"><span class="muted">${m.type} · ${m.start.toFixed(1)} → ${m.end.toFixed(1)}s</span>
+      ${m.type === "hyperframes" ? `<div class="mono">${esc(m.name)}</div>` : f("motion", i, "text", m.text)}</div>`).join("")}
+    <div class="cap" style="margin:14px 0 8px">Illustrations</div>
+    ${P.broll.map((b, i) => `<div class="ent ${STATE.selI === "broll" + i ? "sel" : ""}"><span class="muted">#${i} · ${b.start.toFixed(1)} → ${b.end.toFixed(1)}s ${b.file ? "✅" : "⏳"}</span>
+      <div class="muted" style="font-size:12px">« ${esc(b.context || "")} »</div>${f("broll", i, "query", b.query)}
+      <div class="g2"><div>${f("broll", i, "provider", b.provider, ["auto", "pexels", "pixabay", "wikimedia", "higgsfield", "flow", "veo", "magnific"])}</div><div>${f("broll", i, "layout", b.layout, ["full", "pip", "fullscreen"])}</div></div></div>`).join("")}
+    <div class="cap" style="margin:14px 0 8px">Zooms</div>
+    ${P.zooms.map((z, i) => `<div class="ent ${STATE.selI === "zooms" + i ? "sel" : ""}"><div class="g2"><div>${f("zooms", i, "kind", z.kind, ["punch", "pulse", "ease"])}</div><div>${f("zooms", i, "scale", z.scale)}</div></div></div>`).join("")}`;
+  const drawVars = () => { const c = lib.cards.find(x => x.id === $("#cardsel").value);
+    $("#cardvars").innerHTML = Object.entries(c.vars || {}).map(([k, v]) => `<label class="muted" style="font-size:11px;display:block;margin-top:6px">${k}</label><input data-cv="${k}" style="width:100%" value="${esc(v)}">`).join(""); };
+  $("#cardsel").onchange = drawVars; drawVars();
+  const cardVals = () => Object.fromEntries($$("#cardvars [data-cv]").map(i => [i.dataset.cv, i.value]));
+  $("#cardprev").onclick = () => openCard($("#cardsel").value, cardVals());
+  $("#cardput").onclick = async () => { await savePlan(); run("carte", {video: STATE.p.video, card: $("#cardsel").value, start: +($("#sv").currentTime.toFixed(2)), vars: cardVals()}); };
+  $("#emw").onchange = e => P.emphasis_words = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+  $$("#insp [data-f]").forEach(el => el.onchange = () => { const [sec, i, k] = el.dataset.f.split(".");
+    P[sec][+i][k] = k === "scale" ? parseFloat(el.value) : el.value; if (sec === "broll" && k !== "layout") P[sec][+i].file = null; drawTimeline(); });
+}
+async function savePlan(notify) { if (!STATE.plan) return; await api("/api/plan", {video: STATE.p.video, plan: STATE.plan}); if (notify) toast("Plan enregistré"); }
+
+// ---------- Bibliothèques ----------
+function cardFrame(id, vars = {}) { return `/card?id=${encodeURIComponent(id)}&W=1920&H=1080&preview=1&vars=${encodeURIComponent(JSON.stringify(vars))}`; }
+function fitFrames(root = document) { $$(".cv .vp", root).forEach(vp => { const f = vp.querySelector("iframe"); if (f) f.style.transform = `scale(${vp.offsetWidth / 1920})`; }); }
+window.addEventListener("resize", () => { fitFrames(); fitModal(); });
+const sw = cols => `<span class="sw">${(cols || []).map(c => `<i style="background:${c}"></i>`).join("")}</span>`;
+const fontsCell = f => `<div class="fonts">${f.display ? `<div><b>DISPLAY</b>${esc(f.display)}</div>` : ""}${f.body ? `<div><b>BODY</b>${esc(f.body)}</div>` : ""}${f.mono ? `<div><b>MONO</b>${esc(f.mono)}</div>` : ""}</div>`;
+function cardTile(c, prefix = "") { return `<div class="cv"><div class="vp"><iframe loading="lazy" src="${cardFrame(c.id)}"></iframe></div>
+  <div class="meta"><code>${esc(prefix + c.id)}</code><div class="muted" style="font-size:12px;margin-top:4px">${esc(c.usage || "")}</div><a data-open="${c.id}">Voir en grand</a></div></div>`; }
+async function vBiblio() {
+  const L = STATE.lib = await api("/api/library");
+  $("#view").innerHTML = `
+    <div class="row" style="justify-content:space-between"><div><h1 class="page">Bibliothèques</h1>
+      <p class="sub">Les formats de reel, la bibliothèque de styles et le registre des assets.</p></div>
+      <div class="row"><a class="btn ghost" href="#cartes" id="tocards">Cartes animées</a><a class="btn ghost" href="#refs" id="torefs">Tous les styles</a></div></div>
+    <div class="tbl"><div class="sec-h"><span class="cap acc">Formats de reel</span><span class="cap">la structure d'un reel · <span class="acc">guide</span> · <span class="acc">mesures</span></span></div>
+      <table><tr><th>#</th><th>Format</th><th>État</th><th>Squelette</th><th>Style</th></tr>
+      ${L.formats.map(f => `<tr class="click" data-fmt="${f.id}"><td class="mono muted">${esc(f.numero)}</td><td><div class="nm">${esc(f.nom)}</div><div class="ds">${esc(f.description)}</div></td>
+        <td><b>${esc(f.etat)}</b></td><td class="mono">${esc(f.squelette)}</td><td class="mono muted">${esc(f.style)}</td></tr>`).join("")}</table></div>
+    <div class="tbl"><div class="sec-h"><span class="cap acc">Ta charte</span><span class="cap">thème de l'interface + identité des vidéos</span></div>
+      <table><tr><th>#</th><th>Nom</th><th>Palette</th><th>Polices</th><th></th></tr>
+      ${L.charte.map((t, i) => `<tr><td class="mono muted">${String(i + 1).padStart(2, "0")}</td><td><span class="nm">${esc(t.name)}</span> ${t.active ? '<span class="pill y">TA CHARTE</span>' : ""}<div class="ds">${esc((t.notes || "").slice(0, 120))}</div></td>
+        <td>${sw(Object.values(t.colors).slice(0, 7))}</td><td>${fontsCell(t.fonts)}</td><td>${t.active ? "" : `<button class="btn" data-theme="${t.name}">Activer</button>`}</td></tr>`).join("")}</table></div>
+    <div class="tbl" id="refs"><div class="sec-h"><span class="cap acc">Références</span><span class="cap">${L.references.length} styles · ${L.cards.length} cartes</span></div>
+      <table><tr><th>#</th><th>Nom</th><th>État</th><th>Cartes</th><th>Palette</th><th>Polices</th></tr>
+      ${L.references.map((s, i) => `<tr class="click" data-style="${s.name}"><td class="mono muted">${String(i + 1).padStart(2, "0")}</td>
+        <td><div class="nm">${esc(s.name)}</div><div class="ds">${esc(s.description).slice(0, 90)}</div></td>
+        <td><span class="pill ${s.etat === "Ta charte" ? "y" : ""}">${esc(s.etat)}</span></td><td class="mono">${s.cards.length} cartes</td>
+        <td>${sw(s.palette)}</td><td>${fontsCell(s.fonts)}</td></tr>`).join("")}</table></div>
+    <div class="tbl" id="cartes"><div class="sec-h"><span class="cap acc">Cartes animées</span><span class="cap">compositions Hyperframes · overlay transparent ou plein cadre</span></div>
+      ${groups(L.cards)}</div>`;
+  $$("[data-fmt]").forEach(r => r.onclick = () => location.hash = "#/format/" + r.dataset.fmt);
+  $$("[data-style]").forEach(r => r.onclick = () => location.hash = "#/style/" + r.dataset.style);
+  $$("[data-theme]").forEach(b => b.onclick = async () => { await api("/api/theme", {theme: b.dataset.theme}); $("#theme").href = "/theme.css?t=" + Date.now(); vBiblio(); });
+  $("#tocards").onclick = e => { e.preventDefault(); $("#cartes").scrollIntoView({behavior: "smooth"}); };
+  $("#torefs").onclick = e => { e.preventDefault(); $("#refs").scrollIntoView({behavior: "smooth"}); };
+  bindCards(); fitFrames();
+}
+function groups(cards, prefix = "") {
+  const by = {}; cards.forEach(c => (by[c.category] = by[c.category] || []).push(c));
+  return Object.entries(by).map(([cat, cs]) => `<div class="group" style="padding:0 14px"><h3 data-tog>▾ ${esc(cat)} <span class="count">${cs.length}</span></h3>
+    <div class="cards" style="padding:8px 0">${cs.map(c => cardTile(c, prefix)).join("")}</div></div>`).join("");
+}
+function bindCards() {
+  $$("[data-open]").forEach(a => a.onclick = () => openCard(a.dataset.open));
+  $$("[data-tog]").forEach(h => h.onclick = () => { const n = h.nextElementSibling; n.hidden = !n.hidden; h.firstChild.textContent = (n.hidden ? "▸ " : "▾ ") + h.firstChild.textContent.slice(2); });
+}
+function openCard(id, vars = {}) {
+  STATE.card = [id, vars]; $("#mcode").textContent = id; $("#mframe").src = cardFrame(id, vars);
+  $("#modal").classList.add("on"); fitModal();
+}
+function fitModal() { const st = $("#mstage"); if (st && st.offsetWidth) $("#mframe").style.transform = `scale(${st.offsetWidth / 1920})`; }
+$("#mclose").onclick = () => { $("#modal").classList.remove("on"); $("#mframe").src = "about:blank"; };
+$("#mreplay").onclick = () => $("#mframe").src = cardFrame(...STATE.card);
+$("#mtab").onclick = () => window.open(cardFrame(...STATE.card), "_blank");
+$("#modal").onclick = e => { if (e.target.id === "modal") $("#mclose").click(); };
+
+async function vStyle(name) {
+  const s = await api("/api/style?name=" + encodeURIComponent(name));
+  $("#view").innerHTML = `<a class="back" href="#/bibliotheques">← Bibliothèques</a>
+    <h1 class="page" style="margin-top:6px">${esc(name)}</h1>
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <p class="sub" style="max-width:640px">${esc(s.description)}</p>
+      <div class="row"><button class="btn ghost" id="hidev">Masquer les variantes</button><button class="btn ghost" id="openall">Tout ouvrir</button><span class="mono muted">${s.cards.length} cartes</span></div></div>
+    <div class="row" style="margin-bottom:10px">${sw(s.palette)} ${fontsCell(s.fonts)}</div>
+    <div class="row muted mono" style="font-size:12px;margin-bottom:6px">format ${esc(s.format)}${s.layout ? " · layout " + esc(s.layout) : ""} · <span class="acc" style="color:var(--accent)">bin/monteur prep RUSH.mp4 --style ${esc(name)}</span></div>
+    ${s.cards.length ? groups(s.cards, name + ".") : '<div class="empty">Aucune carte associée à ce style.</div>'}
+    <details class="panel" style="margin-top:16px"><summary class="cap" style="cursor:pointer">Réglages (styles/${esc(name)}.json)</summary><pre class="log" style="max-height:420px">${esc(JSON.stringify(s.json, null, 2))}</pre></details>`;
+  bindCards(); fitFrames();
+  $("#hidev").onclick = () => $$(".cards").forEach(c => c.hidden = true);
+  $("#openall").onclick = () => $$(".cards").forEach(c => c.hidden = false);
+}
+function md(src) {
+  const blocks = src.split(/```(?:\w+)?\n([\s\S]*?)```/g);
+  return blocks.map((b, i) => i % 2 ? `<pre>${esc(b)}</pre>` : esc(b)
+    .replace(/^### (.*)$/gm, "<h3>$1</h3>").replace(/^## (.*)$/gm, "<h2>$1</h2>").replace(/^# (.*)$/gm, "<h1>$1</h1>")
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/^(\d+)\. (.*)$/gm, "<div>$1. $2</div>").replace(/^- (.*)$/gm, "<div>• $1</div>").replace(/\n{2,}/g, "<br><br>")).join("");
+}
+async function vFormat(id) {
+  const f = await api("/api/format?id=" + encodeURIComponent(id));
+  const L = STATE.lib || (STATE.lib = await api("/api/library")); const meta = L.formats.find(x => x.id === id) || {};
+  $("#view").innerHTML = `<a class="back" href="#/bibliotheques">← Bibliothèques</a>
+    ${meta.exemple ? `<div class="row" style="justify-content:space-between;margin-top:10px"><span class="cap">Exemple rendu · référence</span><a class="back" href="${meta.exemple}" target="_blank">ouvrir le mp4</a></div>
+      <div class="player" style="max-width:360px;margin:10px 0 20px"><video controls src="${meta.exemple}"></video></div>` : ""}
+    <div class="cap" style="margin-top:10px">formats/${esc(id)}.md</div><div class="md panel" style="margin-top:10px">${md(f.body)}</div>`;
+}
+
+// ---------- Activité ----------
+async function vActivite() {
+  const a = await api("/api/activity");
+  $("#view").innerHTML = `<h1 class="page">Activité</h1><p class="sub">Tout ce que MonteurOS a lancé depuis le Studio — préparations, rendus, vérifications, cartes, retours.</p>
+    ${a.running.map(j => `<div class="panel"><div class="row"><span class="pill y">en cours</span><b>${esc(j.label)}</b><span class="mono muted">${esc(j.video || "")}</span></div><div class="log" id="joblog" style="margin-top:10px">…</div></div>`).join("")}
+    <div class="tbl"><table><tr><th>Quand</th><th>Action</th><th>Projet</th><th>État</th><th>Durée</th><th>Dernières lignes</th></tr>
+    ${a.items.map(i => `<tr><td class="mono muted" style="white-space:nowrap">${ago(i.started)}</td><td><b>${esc(i.label)}</b></td><td class="mono" style="font-size:12px">${esc(i.video || "")}</td>
+      <td>${i.status === "done" ? '<span class="pill ok">terminé</span>' : i.status === "error" ? '<span class="pill r">erreur</span>' : '<span class="pill y">en cours</span>'}</td>
+      <td class="mono muted">${i.ended ? (i.ended - i.started) + " s" : "—"}</td><td class="mono muted" style="font-size:11px;max-width:380px">${esc((i.tail || []).slice(-2).join(" · ").replace(/\[monteur\] /g, ""))}</td></tr>`).join("")
+      || `<tr><td colspan="6" class="empty">Rien pour l'instant.</td></tr>`}</table></div>`;
+}
+
+route();
 </script>
 </body>
 </html>

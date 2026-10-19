@@ -1,0 +1,50 @@
+{
+  "name": "explainer-editorial",
+  "description": "Explainer éditorial : cartons crème, titres serif, pastilles et marqueurs colorés, rythme documentaire nerveux.",
+  "format": {
+    "aspect": "16:9"
+  },
+  "zoom": {
+    "every_s": 6,
+    "pattern": [
+      "ease",
+      "punch"
+    ]
+  },
+  "subtitles": {
+    "font": "Montserrat Bold",
+    "uppercase": false,
+    "max_words": 6,
+    "max_chars": 34,
+    "highlight": "#2EB4F0",
+    "emphasis": "#E2543B",
+    "size": 0.045
+  },
+  "motion": {
+    "accent": "#2EB4F0"
+  },
+  "look": {
+    "eq": "contrast=1.04:saturation=0.95",
+    "grain": 4
+  },
+  "library": {
+    "etat": "Draft",
+    "palette": [
+      "#EFEADF",
+      "#2EB4F0",
+      "#E2543B",
+      "#E8792F"
+    ],
+    "fonts": {
+      "display": "Fraunces",
+      "body": "Archivo",
+      "mono": "Archivo"
+    },
+    "cards": [
+      "section.cercle",
+      "section.marqueurs",
+      "citation.surligne",
+      "stat.courbe"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+<!--meta {"label":"Liste surlignée","category":"Surlignage","mode":"overlay","duration":5,
+"vars":{"kicker":"Il s'occupe de tout","items":"Les silences, coupés;Les ratés, supprimés;Chaque illustration, calée;Les sound effects, posés;Les zooms, placés"},
+"usage":"Lignes qui passent du gris au blanc ; la ligne active reçoit un surligneur jaune."}-->
+<style>
+.list{position:absolute;left:8%;top:50%;transform:translateY(-50%);width:70%}
+.k{font-weight:900;font-size:calc(var(--u)*2.4);margin-bottom:calc(var(--u)*2);text-transform:uppercase}
+.it{display:table;font-weight:700;font-size:calc(var(--u)*4);color:rgba(244,242,236,.28);margin:calc(var(--u)*.8) 0;
+ padding:0 calc(var(--u)*.8);background:linear-gradient(var(--accent),var(--accent)) no-repeat left/0% 100%}
+</style>
+<template><div class="list"><div class="k">{{kicker}}</div><div id="items"></div></div></template>
+<script>
+const box = document.getElementById("items");
+V.items.split(";").forEach(t => box.insertAdjacentHTML("beforeend", `<div class="it">${t.trim()}</div>`));
+const its = gsap.utils.toArray(".it"), step = (V.DUR - 1.2) / its.length;
+tl.from(".k", { opacity: 0, y: 14, duration: .35 }, 0).from(".it", { opacity: 0, x: -20, stagger: .06, duration: .3 }, .1);
+its.forEach((el, i) => {
+  const t = .6 + i * step;
+  tl.to(el, { color: "#0B0F1A", backgroundSize: "100% 100%", duration: .25 }, t);
+  if (i < its.length - 1) tl.to(el, { color: "#F4F2EC", backgroundSize: "0% 100%", duration: .2 }, t + step - .05);
+});
+tl.to(".list", { opacity: 0, duration: .35 }, V.DUR - .35);
+</script>

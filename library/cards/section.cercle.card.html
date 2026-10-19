@@ -1,0 +1,18 @@
+<!--meta {"label":"Section éditoriale — cercle","category":"Marqueurs de section","mode":"full","duration":3.5,
+"vars":{"before":"Comment Claude a","word":"changé","after":"le montage","accent":"#2EB4F0","paper":"#EFEADF"},
+"usage":"Carton éditorial crème : titre serif, un mot entouré d'une pastille, cadre photo décalé."}-->
+<style>
+.paper{position:absolute;inset:0;background:{{paper|#EFEADF}};color:#141414}
+.h{position:absolute;left:8%;top:34%;width:64%;font-family:Fraunces,Georgia,serif;font-size:calc(var(--u)*8.6);line-height:1.02}
+.w{position:relative;display:inline-block;font-style:italic;font-weight:700}
+.dot{position:absolute;left:50%;top:50%;width:1.6em;height:1.6em;border-radius:50%;background:var(--accent);
+ transform:translate(-50%,-50%);z-index:-1}
+.frame{position:absolute;right:7%;top:22%;width:24%;aspect-ratio:3/4;background:#CFC8B9;border:5px solid #E2543B;transform:rotate(3deg)}
+.rule{position:absolute;left:8%;bottom:16%;width:12%;height:4px;background:#141414}
+</style>
+<template><div class="paper"><div class="frame"></div><div class="h">{{before}} <span class="w"><span class="dot"></span>{{word}}</span> {{after}}</div><div class="rule"></div></div></template>
+<script>
+tl.from(".paper", { opacity: 0, duration: .25 }, 0).from(".h", { y: 50, opacity: 0, duration: .6, ease: "power3.out" }, .1)
+  .from(".dot", { scale: 0, duration: .45, ease: "back.out(2.2)" }, .55).from(".frame", { x: 200, rotate: 12, opacity: 0, duration: .6, ease: "power3.out" }, .3)
+  .from(".rule", { scaleX: 0, transformOrigin: "left", duration: .4 }, .8).to(".paper", { opacity: 0, duration: .3 }, V.DUR - .3);
+</script>
