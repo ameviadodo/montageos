@@ -46,9 +46,22 @@ fetch_font Anton-Regular.ttf "$GF/anton/Anton-Regular.ttf"
 fetch_font BebasNeue-Regular.ttf "$GF/bebasneue/BebasNeue-Regular.ttf"
 for w in Black ExtraBold SemiBold; do fetch_font "Poppins-$w.ttf" "$GF/poppins/Poppins-$w.ttf"; done
 fetch_font Bangers-Regular.ttf "$GF/bangers/Bangers-Regular.ttf"
+# charte « nocturne » (titres serif italique, étiquettes mono) + cartes éditoriales
+fetch_font InstrumentSerif-Italic.ttf "$GF/instrumentserif/InstrumentSerif-Italic.ttf"
+fetch_font InstrumentSerif-Regular.ttf "$GF/instrumentserif/InstrumentSerif-Regular.ttf"
+fetch_font SpaceMono-Regular.ttf "$GF/spacemono/SpaceMono-Regular.ttf"
+fetch_font SpaceMono-Bold.ttf "$GF/spacemono/SpaceMono-Bold.ttf"
+fetch_font Fraunces.ttf "$GF/fraunces/Fraunces%5BSOFT,WONK,opsz,wght%5D.ttf"
 
 # 4) Bibliothèque de bruitages (synthétisés localement)
 $VPY -m monteur sfx >/dev/null && say "Bruitages prêts dans assets/sfx/"
+
+# 4b) GSAP en local (aperçus des cartes animées hors-ligne)
+if command -v npm >/dev/null && [ ! -s assets/vendor/gsap.min.js ]; then
+  mkdir -p assets/vendor .cache/npm
+  npm install --silent --no-audit --no-fund --prefix .cache/npm gsap@3.14.2 >/dev/null 2>&1 \
+    && cp .cache/npm/node_modules/gsap/dist/gsap.min.js assets/vendor/ || true
+fi
 
 # 5) Hyperframes (animations HTML → vidéo)
 if [ "$MOTION" = 1 ]; then

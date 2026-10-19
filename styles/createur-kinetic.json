@@ -1,0 +1,43 @@
+{
+  "name": "createur-kinetic",
+  "description": "Créateur tech : typographie cinétique, cartes surlignées jaune/cyan, zooms fréquents, sous-titres gras.",
+  "format": {
+    "aspect": "9:16"
+  },
+  "zoom": {
+    "every_s": 3,
+    "pattern": [
+      "punch",
+      "pulse"
+    ]
+  },
+  "subtitles": {
+    "font": "Montserrat Black",
+    "highlight": "#FFD935",
+    "emphasis": "#2ED3F0",
+    "max_words": 3
+  },
+  "motion": {
+    "accent": "#FFD935"
+  },
+  "library": {
+    "etat": "Draft",
+    "palette": [
+      "#FFFFFF",
+      "#2ED3F0",
+      "#E2343B",
+      "#FFD935"
+    ],
+    "fonts": {
+      "display": "Plus Jakarta Sans",
+      "body": "Inter",
+      "mono": "Space Mono"
+    },
+    "cards": [
+      "surlignage.liste",
+      "titre.barre",
+      "ecran.rail",
+      "programme.chapitres"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+<!--meta {"label":"Statistique — courbe + compteur","category":"Données","mode":"overlay","duration":4.5,
+"vars":{"label":"Total cumulé","value":"125","suffix":"K","unit":"abonnés","caption":"La barre est franchie en 2026, presque uniquement par le bouche-à-oreille."},
+"usage":"Courbe lumineuse qui se trace pendant que le chiffre compte jusqu'à la valeur."}-->
+<style>
+.card{position:absolute;inset:8% 6%;border-radius:calc(var(--u)*2);background:rgba(11,15,26,.78);border:1px solid rgba(255,255,255,.08)}
+.l{position:absolute;left:7%;top:12%;font-size:calc(var(--u)*1.7);color:var(--accent)}
+.c{position:absolute;left:7%;top:20%;width:38%;font-size:calc(var(--u)*2.4);line-height:1.35;opacity:.85}
+.v{position:absolute;right:7%;top:12%;font-weight:900;font-size:calc(var(--u)*13);color:var(--accent);text-shadow:0 0 40px color-mix(in srgb,var(--accent) 50%,transparent)}
+.u{position:absolute;right:7%;top:42%;font-size:calc(var(--u)*1.6)}
+svg{position:absolute;left:5%;bottom:8%;width:90%;height:50%}
+</style>
+<template><div class="card"><div class="l mono">{{label}}</div><div class="c">{{caption}}</div><div class="v"><span id="n">0</span>{{suffix}}</div>
+<div class="u mono">{{unit}}</div><svg viewBox="0 0 1000 400" preserveAspectRatio="none"><path id="p" d="M0 390 C 400 385, 650 330, 780 220 S 930 40, 1000 10"
+fill="none" stroke="var(--accent)" stroke-width="6"/></svg></div></template>
+<script>
+const p = document.getElementById("p"), L = p.getTotalLength(), n = { v: 0 };
+gsap.set(p, { strokeDasharray: L, strokeDashoffset: L });
+tl.from(".card", { opacity: 0, scale: .96, duration: .4 }, 0).from([".l", ".c"], { opacity: 0, y: 14, stagger: .1, duration: .35 }, .2)
+  .to(p, { strokeDashoffset: 0, duration: 2.2, ease: "power2.in" }, .4)
+  .to(n, { v: +V.value, duration: 2.2, ease: "power2.in", onUpdate: () => document.getElementById("n").textContent = Math.round(n.v) }, .4)
+  .to(".card", { opacity: 0, duration: .35 }, V.DUR - .35);
+</script>

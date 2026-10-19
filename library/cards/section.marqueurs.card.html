@@ -1,0 +1,17 @@
+<!--meta {"label":"Section — mots sur marqueurs","category":"Marqueurs de section","mode":"full","duration":3,
+"vars":{"words":"Monte;comme;un pro","kicker":"La méthode","paper":"#EFEADF","accent":"#2EB4F0"},
+"usage":"Mots empilés sur des pavés de couleur qui claquent un par un."}-->
+<style>
+.paper{position:absolute;inset:0;background:{{paper|#EFEADF}};display:flex;flex-direction:column;justify-content:center;padding-left:12%}
+.k{font-family:"Space Mono",monospace;font-size:calc(var(--u)*1.8);letter-spacing:.2em;color:#141414;margin-bottom:calc(var(--u)*2)}
+.m{display:table;font-family:Fraunces,Georgia,serif;font-weight:800;font-size:calc(var(--u)*9);color:#141414;
+ padding:0 calc(var(--u)*1.4);margin:calc(var(--u)*.6) 0;background:var(--accent)}
+.m:nth-child(odd){background:#141414;color:#EFEADF}
+</style>
+<template><div class="paper"><div class="k">{{kicker}}</div><div id="ws"></div></div></template>
+<script>
+const ws = document.getElementById("ws");
+V.words.split(";").forEach(w => ws.insertAdjacentHTML("beforeend", `<div class="m">${w.trim()}</div>`));
+tl.from(".k", { opacity: 0, duration: .3 }, 0).from(".m", { scaleX: 0, transformOrigin: "left", stagger: .22, duration: .3, ease: "power4.out" }, .15)
+  .to(".paper", { opacity: 0, duration: .3 }, V.DUR - .3);
+</script>

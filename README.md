@@ -43,21 +43,28 @@ bin/monteur studio --root ~/Videos            # interface → http://127.0.0.1:8
 ## Interface MonteurOS Studio
 Une interface web locale : liste des rushs, cartes des 6 formats, lecteur Rush/Coupé/Final, timeline (zooms, B-roll, animations), inspecteur pour retoucher le plan, copie de style et sélecteur de charte. Les couleurs, polices et coins arrondis viennent de `ui/themes/<nom>.json`.
 
-### Reprendre la charte « EditingOS » de la vidéo de référence
-Pendant la création, YouTube n'était pas accessible depuis le serveur, donc la charte n'a pas pu être extraite. Pour le faire sur ta machine :
-```bash
-bin/monteur charte "https://www.youtube.com/watch?v=yY_spHjq1vk" --name editingos
-```
-Ensuite, demande à Claude : « affine le thème editingos à partir des captures » (skill `monteur-charte`). Choisis enfin `editingos` dans le sélecteur « Charte » du Studio. Des captures d'écran de l'interface marchent encore mieux : `bin/monteur charte capture1.png capture2.png --name editingos`.
+### Inspiré d'EditingOS
+La vidéo de référence a été analysée image par image (détail : [`docs/editingos-analyse.md`](docs/editingos-analyse.md)). MonteurOS en reprend :
+- **les menus** Projets · Studio · Bibliothèques · Activité ;
+- **les retours frame par frame** (−1 img / +1 img, « Copier pour Claude », « Envoyer au montage ») ;
+- **le « Rendu draft + vérif »** et les livrables versionnés ;
+- **les formats de reel** Split carte et Avant/après ;
+- **les cartes animées** : écrans 3D, rail des étapes, médaillon, surlignage, marqueurs de section, stat + compteur, programme ;
+- **la charte « nocturne »** : bleu nuit, jaune #FFD935, serif italique et mono.
 
-Pour copier aussi le style de montage de cette vidéo :
 ```bash
-bin/monteur style "https://www.youtube.com/watch?v=yY_spHjq1vk" --name video-reference --transcribe
+bin/monteur render rush.mp4 --draft                 # brouillon + vérification automatique
+bin/monteur retours rush.mp4                        # retours frame par frame laissés dans le Studio
+bin/monteur cartes                                  # catalogue des cartes animées
+bin/monteur carte rush.mp4 stat.courbe --start 12 --set value=125 --set suffix=K
+bin/monteur avant-apres transforme.mp4 original.mp4 --title "Avant / après" --out compare.mp4
+bin/monteur prep rush.mp4 --style split-carte       # format Split carte
 ```
 
 ## Architecture
-- `skills/` : 11 skills Claude (un chef d'orchestre et 10 métiers). Le dossier sert aussi de plugin (`.claude-plugin/`) et de skills de projet (`.claude/skills`).
+- `skills/` : 13 skills Claude (un chef d'orchestre et 12 métiers). Le dossier sert aussi de plugin (`.claude-plugin/`) et de skills de projet (`.claude/skills`).
 - `claude-projects/` : 4 projets claude.ai (directeur artistique, scripts pub/UGC, prompts studio IA, analyste de style).
 - `monteur/` : moteur Python + ffmpeg (aucune dépendance lourde).
+- `library/` : formats de reel (`formats/*.md`) et cartes animées Hyperframes (`cards/*.card.html`).
 - `styles/` : `default`, `hormozi`, `minimal`, `pub`, `ugc`, `documentaire`, `intro-youtube`, `formation`, `produit` et tes styles copiés.
 - `.mcp.json` : connecteur Higgsfield.

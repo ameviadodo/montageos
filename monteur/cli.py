@@ -85,8 +85,65 @@ def cmd_broll(a):
 
 def cmd_render(a):
     from .render import render
+    from .verify import verify
     ws, style = get_ws(a)
-    render(ws, style, Path(a.out).resolve() if a.out else None)
+    out = render(ws, style, Path(a.out).resolve() if getattr(a, "out", None) else None, draft=getattr(a, "draft", False))
+    if getattr(a, "draft", False) or getattr(a, "verif", False):
+        verify(ws, out)
+
+
+def cmd_verif(a):
+    from .project import renders
+    from .verify import verify
+    ws, _ = get_ws(a)
+    rs = renders(ws)
+    if not rs:
+        raise SystemExit("Aucun rendu à vérifier.")
+    verify(ws, Path(a.file).resolve() if a.file else Path(rs[-1]["path"]))
+
+
+def cmd_retours(a):
+    from . import review
+    ws, _ = get_ws(a)
+    if a.ajoute is not None:
+        review.add(ws, a.ajoute, a.texte or "", probe(ws.base_video())["fps"])
+    if a.applique:
+        review.mark(ws, a.applique)
+    print(review.as_text(ws, only_pending=not a.tous))
+
+
+def cmd_projet(a):
+    from .project import info, set_meta
+    ws, _ = get_ws(a)
+    if a.titre or a.etat or a.famille or a.type:
+        set_meta(ws, title=a.titre, status=a.etat, family=a.famille, type=a.type)
+    import json
+    print(json.dumps(info(ws), ensure_ascii=False, indent=2))
+
+
+def cmd_cartes(a):
+    from .cards import catalog
+    for c in catalog():
+        print(f"{c['id']:<26} [{c['category']}] {c['label']} — {c.get('usage', '')}")
+        print(f"{'':<26} vars : " + ", ".join(f"{k}={v!r}" for k, v in c.get("vars", {}).items()))
+
+
+def cmd_carte(a):
+    from .cards import render as card_render
+    from .render import out_size
+    ws, style = get_ws(a)
+    values = dict(kv.split("=", 1) for kv in (a.set or []))
+    W, H = out_size(probe(ws.base_video()), style["format"])
+    layout = None
+    if style["format"].get("layout") == "split":
+        H, layout = int(H * style["format"].get("split", 0.42)) // 2 * 2, "panel"
+    card_render(ws, a.card, a.start, values, W, H, a.duree, layout=layout)
+
+
+def cmd_avant_apres(a):
+    from .layouts import avant_apres
+    avant_apres(a.apres, a.avant, a.out, a.title or "", a.subtitle or "", tuple(a.labels.split(",")),
+                "after" if a.audio == "apres" else "before")
 
 
 def cmd_prep(a):
@@ -214,9 +271,28 @@ def main(argv=None):
     vid("cut", cmd_cut, "Supprime blancs, hésitations, répétitions")
     vid("plan", cmd_plan, "Génère le plan auto (zooms, B-roll, animations)")
     vid("broll", cmd_broll, "Télécharge les illustrations du plan")
-    s = vid("render", cmd_render, "Rendu final")
+    s = vid("render", cmd_render, "Rendu versionné (master, ou --draft rapide + vérification)")
     s.add_argument("--out")
     s.add_argument("--music")
+    s.add_argument("--draft", action="store_true", help="demi-résolution, ~4× plus rapide, puis vérification")
+    s.add_argument("--verif", action="store_true", help="vérifier aussi le master")
+    s = vid("verif", cmd_verif, "Contrôle qualité du dernier rendu (noirs, blancs, saturation, mots coupés…)")
+    s.add_argument("--file")
+    s = vid("retours", cmd_retours, "Retours frame par frame : liste / ajoute / marque appliqués")
+    s.add_argument("--ajoute", type=float, metavar="SECONDES")
+    s.add_argument("--texte")
+    s.add_argument("--applique", type=int, nargs="+", metavar="ID")
+    s.add_argument("--tous", action="store_true")
+    s = vid("projet", cmd_projet, "Infos projet (état, versions, retours) ; --etat livré pour livrer")
+    s.add_argument("--titre")
+    s.add_argument("--etat", choices=["livré", "en cours"])
+    s.add_argument("--famille")
+    s.add_argument("--type")
+    s = vid("carte", cmd_carte, "Pose une carte animée de la bibliothèque (rendue via Hyperframes)")
+    s.add_argument("card")
+    s.add_argument("--start", type=float, required=True)
+    s.add_argument("--duree", type=float)
+    s.add_argument("--set", action="append", metavar="clé=valeur")
     s = vid("motion-new", cmd_motion_new, "Crée une composition Hyperframes")
     s.add_argument("name")
     s.add_argument("--example", default="blank")
@@ -238,6 +314,16 @@ def main(argv=None):
     s.add_argument("--name", required=True)
     s.add_argument("--transcribe", action="store_true", help="mesure aussi le débit de parole")
     s.set_defaults(fn=cmd_style)
+    sub.add_parser("cartes", help="Catalogue des cartes animées").set_defaults(fn=cmd_cartes)
+    s = sub.add_parser("avant-apres", help="Format reel Avant/après (2 vidéos empilées + titre)")
+    s.add_argument("apres", help="version transformée")
+    s.add_argument("avant", help="version originale")
+    s.add_argument("--out", required=True)
+    s.add_argument("--title")
+    s.add_argument("--subtitle")
+    s.add_argument("--labels", default="Transformé,Originale")
+    s.add_argument("--audio", choices=["apres", "avant"], default="apres")
+    s.set_defaults(fn=cmd_avant_apres)
     s = sub.add_parser("slideshow", help="Vidéo produit à partir de photos (Ken Burns)")
     s.add_argument("images", nargs="+")
     s.add_argument("--out", required=True)

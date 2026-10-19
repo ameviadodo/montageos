@@ -1,0 +1,20 @@
+<!--meta {"label":"Programme / chapitres","category":"Titres","mode":"overlay","duration":4,
+"vars":{"kicker":"le programme","items":"Comment ça marche;L'installer chez toi;La démonstration;La personnalisation","active":"1"},
+"usage":"Sommaire numéroté sur verre dépoli ; le chapitre courant s'allume avec une barre d'accent."}-->
+<style>
+.p{position:absolute;right:5%;top:50%;transform:translateY(-50%);width:34%;padding:calc(var(--u)*2.6);border-radius:calc(var(--u)*1.6);
+ background:var(--glass);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1)}
+.p .k{font-size:calc(var(--u)*2.6);opacity:.8;margin-bottom:calc(var(--u)*1.4)}
+.ch{display:flex;gap:calc(var(--u)*1.4);align-items:baseline;font-weight:800;font-size:calc(var(--u)*2.7);color:rgba(244,242,236,.35);
+ padding:calc(var(--u)*.7) calc(var(--u)*1.2);border-left:4px solid transparent}
+.ch i{font-style:normal;font-family:"Space Mono",monospace;font-size:.6em}
+.ch.on{color:#fff;border-left-color:var(--accent)}.ch.on i{color:var(--accent)}
+</style>
+<template><div class="p"><div class="k serif">{{kicker}}</div><div id="chs"></div></div></template>
+<script>
+const box = document.getElementById("chs");
+V.items.split(";").forEach((t, i) => box.insertAdjacentHTML("beforeend",
+  `<div class="ch ${i + 1 == V.active ? "on" : ""}"><i>${String(i + 1).padStart(2, "0")}</i>${t.trim()}</div>`));
+tl.from(".p", { x: 300, opacity: 0, duration: .6, ease: "power3.out" }, 0).from(".ch", { opacity: 0, x: 20, stagger: .08, duration: .3 }, .3)
+  .from(".ch.on", { scale: 1.08, duration: .3, ease: "back.out(3)" }, .8).to(".p", { x: 300, opacity: 0, duration: .4 }, V.DUR - .4);
+</script>

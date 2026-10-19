@@ -1,0 +1,14 @@
+{
+  "name": "split-carte", "mode": "split-carte",
+  "description": "Format reel « Split carte » : animations dans le panneau du haut, orateur en bas, sous-titres à la jonction.",
+  "format": {"aspect": "9:16", "layout": "split", "split": 0.42, "panel_color": "#0B0F1A"},
+  "cut": {"min_silence": 0.3, "padding": 0.06},
+  "zoom": {"every_s": 4, "scale": 1.1, "pattern": ["punch", "pulse"]},
+  "subtitles": {"font": "Montserrat Black", "size": 0.06, "max_words": 3, "highlight": "#FFD935", "emphasis": "#FFD935", "position": "upper", "margin_v": 0.44},
+  "broll": {"per_minute": 6, "duration": 2.4, "layout": "full"},
+  "motion": {"hook_title": true, "accent": "#FFD935", "cta": {"text": "ABONNE-TOI", "subtext": "nouvelle vidéo chaque semaine", "duration": 2.5}},
+  "sfx": {"volume": 0.4},
+  "library": {"etat": "Exemple", "palette": ["#0B0F1A", "#F4F2EC", "#FFD935"],
+              "fonts": {"display": "Instrument Serif", "body": "Montserrat", "mono": "Space Mono"},
+              "cards": ["section.stage", "ecran.rail", "surlignage.liste", "stat.courbe", "titre.barre"]}
+}

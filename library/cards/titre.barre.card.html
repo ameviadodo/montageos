@@ -1,0 +1,15 @@
+<!--meta {"label":"Titre barre + point","category":"Titres","mode":"overlay","duration":3,
+"vars":{"word":"abonnés"},
+"usage":"La barre s'étire, le point glisse, le mot monte : l'animation-code typique (gsap.to)."}-->
+<style>
+.box{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:36%;height:30%;border-radius:calc(var(--u)*1.6);background:rgba(17,22,36,.85)}
+.bar{position:absolute;left:12%;top:24%;width:70%;height:calc(var(--u)*1.1);background:var(--accent);border-radius:99px;transform-origin:left}
+.dot{position:absolute;left:12%;top:40%;width:calc(var(--u)*2);height:calc(var(--u)*2);border-radius:50%;background:var(--accent)}
+.mot{position:absolute;left:12%;bottom:16%;font-weight:800;font-size:calc(var(--u)*4)}
+</style>
+<template><div class="box"><div class="bar"></div><div class="dot"></div><div class="mot">{{word}}</div></div></template>
+<script>
+tl.from(".box", { opacity: 0, duration: .3 }, 0).from(".bar", { scaleX: 0, duration: .6, ease: "power3.out" }, .2)
+  .from(".dot", { x: "-60%", opacity: 0, duration: .5 }, .45).to(".dot", { x: "1300%", duration: .7, ease: "power2.inOut" }, .9)
+  .from(".mot", { y: 30, opacity: 0, duration: .45 }, 1.1).to(".box", { opacity: 0, duration: .3 }, V.DUR - .3);
+</script>

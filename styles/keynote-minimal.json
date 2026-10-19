@@ -1,0 +1,46 @@
+{
+  "name": "keynote-minimal",
+  "description": "Keynote minimal : fond noir, un seul accent bleu, beaucoup d'air, transitions douces.",
+  "zoom": {
+    "every_s": 10,
+    "scale": 1.05,
+    "pattern": [
+      "ease"
+    ]
+  },
+  "subtitles": {
+    "font": "Poppins SemiBold",
+    "uppercase": false,
+    "max_words": 7,
+    "max_chars": 40,
+    "highlight": "#FFFFFF",
+    "emphasis": "#3BA7FF",
+    "karaoke": false,
+    "pop": false,
+    "size": 0.042
+  },
+  "motion": {
+    "accent": "#3BA7FF"
+  },
+  "sfx": {
+    "volume": 0.2
+  },
+  "library": {
+    "etat": "Draft",
+    "palette": [
+      "#000000",
+      "#FFFFFF",
+      "#3BA7FF"
+    ],
+    "fonts": {
+      "display": "Inter Tight",
+      "body": "Inter",
+      "mono": "IBM Plex Mono"
+    },
+    "cards": [
+      "section.stage",
+      "stat.courbe",
+      "titre.barre"
+    ]
+  }
+}

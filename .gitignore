@@ -9,3 +9,6 @@ node_modules/
 assets/fonts/*.ttf
 assets/sfx/*.wav
 assets/sfx/*.mp3
+assets/vendor/
+.cache/
+ui/activity.json

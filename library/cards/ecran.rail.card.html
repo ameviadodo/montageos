@@ -1,0 +1,23 @@
+<!--meta {"label":"Rail des étapes (punch)","category":"Écrans","mode":"overlay","duration":5,
+"vars":{"title":"Le rail des étapes","items":"Rush brut;Coupe;Illustrations;Sous-titres;Rendu","active":"3"},
+"usage":"Liste d'étapes, un cadre lumineux vient se poser sur l'étape en cours."}-->
+<style>
+.wrap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:62%;text-align:center}
+.wrap h2{font-size:calc(var(--u)*6);color:var(--accent);margin-bottom:calc(var(--u)*3)}
+.step{position:relative;font-size:calc(var(--u)*3);padding:calc(var(--u)*1.6);opacity:.4;font-weight:600}
+.box{position:absolute;left:0;right:0;border:3px solid var(--accent);border-radius:calc(var(--u)*1.2);
+ box-shadow:0 0 40px color-mix(in srgb,var(--accent) 55%,transparent)}
+</style>
+<template><div class="wrap"><h2 class="serif">{{title}}</h2><div id="list" style="position:relative"><div class="box"></div></div></div></template>
+<script>
+const list = document.getElementById("list");
+V.items.split(";").forEach(t => list.insertAdjacentHTML("beforeend", `<div class="step">${t.trim()}</div>`));
+const steps = [...document.querySelectorAll(".step")], k = Math.min(steps.length, +V.active) - 1, box = document.querySelector(".box");
+gsap.set(box, { top: steps[0].offsetTop, height: steps[0].offsetHeight });
+tl.from(".wrap h2", { y: 30, opacity: 0, duration: .5 }, 0)
+  .from(".step", { opacity: 0, x: -30, stagger: .08, duration: .35 }, .2)
+  .from(box, { opacity: 0, scale: .9, duration: .3 }, .8);
+for (let i = 1; i <= k; i++) tl.to(box, { top: steps[i].offsetTop, duration: .35, ease: "back.out(2)" }, .9 + i * .35);
+tl.to(steps[k], { opacity: 1, color: "#fff", duration: .2 }, .9 + k * .35)
+  .to(".wrap", { opacity: 0, duration: .4 }, V.DUR - .4);
+</script>

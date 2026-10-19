@@ -20,7 +20,8 @@ Toutes les durées sont en secondes **sur la timeline coupée** (`cut.mp4`).
     {"start": 0.15, "end": 2.3, "type": "title", "text": "DOUBLE TES VENTES", "y": 0.42},
     {"start": 5, "end": 8, "type": "lower_third", "text": "Isidore — Expert Marketing"},
     {"start": 30, "end": 31.5, "type": "callout", "text": "+212 %"},
-    {"start": 40, "end": 46, "type": "hyperframes", "name": "graph", "file": "…/graph.mov", "layout": "overlay|full"}
+    {"start": 40, "end": 46, "type": "hyperframes", "name": "graph", "file": "…/graph.mov", "layout": "overlay|full|panel"},
+    {"start": 50, "end": 52, "type": "chapter", "number": "02", "text": "L'installer chez toi"}
   ],
   "sfx": [{"t": 30.0, "name": "ding", "gain": 0.4}],   // en plus des bruitages automatiques
   "emphasis": [12, 57],                                  // indices de mots (transcript_cut)
@@ -30,6 +31,6 @@ Toutes les durées sont en secondes **sur la timeline coupée** (`cut.mp4`).
 ```
 
 - `file` à `null` = à trouver (`monteur broll`) ou à générer (IA puis `monteur attach`).
-- `layout: "pip"` = incrustation en haut à droite ; `full` = plein écran (la voix continue).
+- `layout: "pip"` = incrustation en haut à droite ; `full` = plein écran (la voix continue) — en format Split carte, `full` va dans le panneau du haut ; `fullscreen` force le plein cadre.
 - `hide_subs: true` masque les sous-titres pendant un B-roll très chargé.
 - Les bruitages automatiques découlent de `style.sfx` (`on_zoom`, `on_broll`, `on_motion`).

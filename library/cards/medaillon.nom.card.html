@@ -1,0 +1,15 @@
+<!--meta {"label":"Médaillon nom + rôle","category":"Médaillons","mode":"overlay","duration":4,
+"vars":{"name":"PRÉNOM NOM","role":"Fondateur de ta marque"},
+"usage":"Bandeau d'identification de l'orateur, glissé depuis la gauche avec barre d'accent."}-->
+<style>
+.med{position:absolute;left:5%;bottom:9%;padding:calc(var(--u)*2) calc(var(--u)*3);background:rgba(11,15,26,.82);
+ border-left:calc(var(--u)*.7) solid var(--accent);border-radius:calc(var(--u)*.8);backdrop-filter:blur(8px)}
+.med .n{font-weight:900;font-size:calc(var(--u)*3.6);letter-spacing:.02em}
+.med .r{font-size:calc(var(--u)*1.7);opacity:.75;margin-top:calc(var(--u)*.6)}
+</style>
+<template><div class="med"><div class="n">{{name}}</div><div class="r mono">{{role}}</div></div></template>
+<script>
+tl.from(".med", { x: -420, opacity: 0, duration: .55, ease: "power3.out" }, 0)
+  .from(".med .r", { opacity: 0, y: 10, duration: .35 }, .35)
+  .to(".med", { x: -420, opacity: 0, duration: .4, ease: "power2.in" }, V.DUR - .4);
+</script>

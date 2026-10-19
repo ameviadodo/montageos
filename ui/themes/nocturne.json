@@ -1,0 +1,8 @@
+{
+  "name": "nocturne",
+  "colors": {"bg": "#070A12", "surface": "#0E1320", "surface2": "#182033", "text": "#F2F1EC", "muted": "#7F879B",
+             "accent": "#FFD935", "accent2": "#4ADE80", "danger": "#FF5A6E", "ink": "#0B0F1A"},
+  "fonts": {"display": "Instrument Serif", "body": "Montserrat", "mono": "Space Mono"},
+  "radius": 16,
+  "layout_notes": "Charte relevée sur la vidéo de référence : fond bleu nuit, accent jaune en pastilles (navigation, boutons primaires), titres de page en serif italique, étiquettes de section en mono capitales espacées jaunes, chiffres en mono, cartes sombres bord fin, badges MASTER / 9:16 en mono, états en pastilles (vert = prêt à relire, jaune = livré, rouge = périmé)."
+}

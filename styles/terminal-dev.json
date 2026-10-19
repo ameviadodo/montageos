@@ -1,0 +1,38 @@
+{
+  "name": "terminal-dev",
+  "description": "Terminal développeur : esthétique code, mono vert/bleu, cartes écran, sons click.",
+  "subtitles": {
+    "font": "Bangers",
+    "highlight": "#3BA7FF",
+    "emphasis": "#7CF2B6",
+    "max_words": 3
+  },
+  "motion": {
+    "accent": "#3BA7FF"
+  },
+  "sfx": {
+    "on_zoom": {
+      "punch": "click",
+      "pulse": "glitch",
+      "ease": null
+    }
+  },
+  "library": {
+    "etat": "Draft",
+    "palette": [
+      "#FFFFFF",
+      "#3BA7FF",
+      "#0B0F1A"
+    ],
+    "fonts": {
+      "display": "Luckiest Guy",
+      "body": "Inter",
+      "mono": "JetBrains Mono"
+    },
+    "cards": [
+      "ecran.push3d",
+      "ecran.rail",
+      "titre.barre"
+    ]
+  }
+}

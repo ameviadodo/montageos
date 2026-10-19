@@ -22,5 +22,8 @@ Si la disposition diffère fortement de `ui/index.html`, adapte la mise en page 
 Sélecteur « Charte » en haut à droite du Studio, ou `ui/settings.json` → `{"theme": "editingos"}`.
 Aligne aussi les vidéos : reporte `accent` dans `styles/*.json` (`subtitles.highlight`, `motion.accent`) si l'utilisateur veut une identité commune.
 
+## Charte par défaut : `nocturne`
+Relevée image par image sur la vidéo de référence de l'utilisateur : bleu nuit `#070A12`, panneaux `#0E1320`, accent jaune `#FFD935` (navigation en pastilles, boutons primaires), vert `#4ADE80` (prêt à relire), rouge `#FF5A6E` (périmé) ; titres de page **Instrument Serif italique**, corps **Montserrat**, étiquettes et chiffres **Space Mono** en capitales espacées. Le style vidéo `styles/nocturne.json` en est la déclinaison (sous-titres et cartes jaunes).
+
 ## Règle
 On s'inspire d'une charte (couleurs, typo, ergonomie) ; on ne copie ni logo ni nom de marque tiers dans l'interface.

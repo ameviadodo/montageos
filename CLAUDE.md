@@ -5,7 +5,8 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 
 - Point d'entrée : skill `monteuros` (chef d'orchestre). Les autres skills (`skills/`) détaillent chaque métier :
   `monteur-setup`, `monteur-decoupe`, `monteur-sous-titres`, `monteur-illustrations`, `monteur-sfx`,
-  `monteur-zooms-animations`, `monteur-copie-style`, `monteur-studio-ia`, `monteur-formats`, `monteur-charte`.
+  `monteur-zooms-animations`, `monteur-copie-style`, `monteur-studio-ia`, `monteur-formats`, `monteur-charte`,
+  `monteur-retours` (draft + vérif → retours frame par frame → master), `monteur-bibliotheque` (formats de reel, cartes animées, références).
 - CLI : `bin/monteur <commande>` (ou `monteur` après `setup.sh`). `bin/monteur --help` pour tout voir.
 - Installation : tu installes toi-même les petites ressources manquantes (`bash setup.sh`, options `--motion`, `--ai`) sans demander. Tu demandes avant toute dépense de crédits (Higgsfield, Magnific, Veo).
 - Le rush n'est jamais modifié ; tout vit dans `<rush>.monteur/`. `plan.json` est le document éditorial que tu améliores (schéma : `skills/monteuros/references/plan-schema.md`).
@@ -27,4 +28,9 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 | `monteur/style_clone.py` | analyse de références → `styles/<nom>.json` |
 | `monteur/charte.py` | palette → `ui/themes/<nom>.json` |
 | `monteur/slideshow.py` | photos produit → vidéo |
-| `monteur/studio.py`, `ui/index.html` | interface web locale |
+| `monteur/verify.py` | contrôle qualité d'un rendu (noirs, blancs, saturation, mots coupés…) |
+| `monteur/review.py` | retours frame par frame (`review/feedback.json`) |
+| `monteur/project.py` | état projet, versions `renders/`, rendus périmés, miniatures |
+| `monteur/cards.py`, `library/cards/` | cartes animées Hyperframes paramétrables |
+| `monteur/layouts.py`, `library/formats/` | formats de reel (Avant/après ; Split carte dans `render.py`) |
+| `monteur/studio.py`, `ui/index.html` | MonteurOS Studio : Projets · Studio · Bibliothèques · Activité |

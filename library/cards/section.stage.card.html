@@ -1,0 +1,15 @@
+<!--meta {"label":"Boot « STAGE 1 »","category":"Marqueurs de section","mode":"full","duration":2.5,
+"vars":{"title":"ÉTAPE 1","sub":"Créer les assets","glow":"#3A2A08"},
+"usage":"Écran de démarrage plein cadre : grand titre, sous-titre encadré, léger scintillement LED."}-->
+<style>
+.bg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,{{glow|#3A2A08}},#07080C 70%)}
+.t{position:absolute;left:0;right:0;top:44%;text-align:center;font-weight:900;font-size:calc(var(--u)*11);letter-spacing:.02em}
+.s{position:absolute;left:50%;top:60%;transform:translateX(-50%);font-size:calc(var(--u)*1.6);padding:calc(var(--u)*.5) calc(var(--u)*1.2);
+ border:1px solid rgba(255,255,255,.6)}
+</style>
+<template><div class="bg"></div><div class="t">{{title}}</div><div class="s mono">{{sub}}</div></template>
+<script>
+tl.from(".bg", { opacity: 0, duration: .3 }, 0)
+  .fromTo(".t", { opacity: 0 }, { opacity: 1, duration: .05, repeat: 5, yoyo: true }, .2).set(".t", { opacity: 1 }, .55)
+  .from(".s", { opacity: 0, y: 10, duration: .3 }, .6).to([".t", ".s", ".bg"], { opacity: 0, duration: .3 }, V.DUR - .3);
+</script>
