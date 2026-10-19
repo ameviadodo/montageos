@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Lanceur MonteurOS : utilise le venv local s'il existe.
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+PY="$ROOT/.venv/bin/python"; [ -x "$PY" ] || PY=python3
+export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
+exec "$PY" -m monteur "$@"

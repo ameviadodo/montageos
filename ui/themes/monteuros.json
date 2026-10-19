@@ -1,0 +1,7 @@
+{
+  "name": "monteuros",
+  "colors": {"bg": "#0B0B10", "surface": "#14141C", "surface2": "#1D1D28", "text": "#F4F4F8", "muted": "#8A8AA0", "accent": "#8B5CF6", "accent2": "#22D3EE"},
+  "fonts": {"display": "Montserrat", "body": "Inter"},
+  "radius": 14,
+  "layout_notes": "Thème par défaut. Remplacer par la charte extraite (monteur charte … --name editingos)."
+}

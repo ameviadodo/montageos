@@ -1,0 +1,11 @@
+{
+  "name": "intro-youtube", "mode": "intro-youtube",
+  "description": "Intro YouTube (premières 30-60 s) : hook fort, promesse, aperçu rapide du contenu en B-roll, titre animé Hyperframes, rétention max.",
+  "format": {"aspect": "16:9"},
+  "cut": {"min_silence": 0.3, "padding": 0.06},
+  "zoom": {"every_s": 3.5, "scale": 1.12, "pattern": ["punch", "pulse", "ease"]},
+  "subtitles": {"font": "Montserrat ExtraBold", "size": 0.055, "max_words": 4, "highlight": "#00E5FF", "emphasis": "#FFD400", "margin_v": 0.1},
+  "broll": {"per_minute": 8, "duration": 1.8},
+  "motion": {"hook_title": true, "accent": "#00E5FF"},
+  "sfx": {"volume": 0.4}
+}

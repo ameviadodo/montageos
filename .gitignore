@@ -1,0 +1,11 @@
+.venv/
+.env
+*.monteur/
+styles/refs/
+ui/themes/*/
+ui/settings.json
+__pycache__/
+node_modules/
+assets/fonts/*.ttf
+assets/sfx/*.wav
+assets/sfx/*.mp3
