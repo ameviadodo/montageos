@@ -57,9 +57,25 @@ def _download(model):
     return path
 
 
+def read_wav(path):
+    """WAV 16 kHz mono (déjà extrait par ffmpeg) → échantillons float32, sans passer par PyAV :
+    faster-whisper ouvre les fichiers avec av.open(metadata_errors=…), option supprimée dans PyAV 19
+    (« open() got an unexpected keyword argument 'metadata_errors' »)."""
+    import wave
+    import numpy as np
+    with wave.open(str(path), "rb") as w:
+        if w.getsampwidth() != 2 or w.getframerate() != 16000:
+            raise RuntimeError(f"WAV inattendu ({w.getframerate()} Hz, {w.getsampwidth() * 8} bits) : {path}")
+        data = np.frombuffer(w.readframes(w.getnframes()), np.int16)
+        if w.getnchannels() > 1:
+            data = data.reshape(-1, w.getnchannels()).mean(axis=1)
+    return data.astype(np.float32) / 32768.0
+
+
 def _segments(m, wav, language):
+    audio = read_wav(wav)
     try:
-        return m.transcribe(str(wav), language=language, word_timestamps=True,
+        return m.transcribe(audio, language=language, word_timestamps=True,
                             vad_filter=False, condition_on_previous_text=False)
     except RuntimeError as e:  # DLL CUDA manquante découverte seulement à l'inférence (Windows)
         if "cud" not in str(e).lower() and "cublas" not in str(e).lower():
@@ -67,13 +83,13 @@ def _segments(m, wav, language):
         log("GPU indisponible pour Whisper (CUDA/cuDNN) → CPU.")
         from faster_whisper import WhisperModel
         cpu = WhisperModel(m.model_size_or_path, device="cpu", compute_type="int8")
-        return cpu.transcribe(str(wav), language=language, word_timestamps=True,
+        return cpu.transcribe(audio, language=language, word_timestamps=True,
                               vad_filter=False, condition_on_previous_text=False)
 
 
 def transcribe(video, out_json, model="small", language=None):
     wav = out_json.with_suffix(".wav")
-    ffmpeg(["-i", video, "-vn", "-ac", "1", "-ar", "16000", wav])
+    ffmpeg(["-i", video, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wav])
     words, lang = [], language
     try:
         import faster_whisper  # noqa: F401 — déclenche le repli openai-whisper s'il manque

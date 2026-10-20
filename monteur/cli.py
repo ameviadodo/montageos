@@ -100,8 +100,9 @@ def cmd_whisper(a):
     with tempfile.TemporaryDirectory() as d:
         wav = Path(d) / "s.wav"
         from .common import ffmpeg
-        ffmpeg(["-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono", "-t", "1", wav])
-        list(m.transcribe(str(wav))[0])
+        ffmpeg(["-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono", "-t", "1", "-c:a", "pcm_s16le", wav])
+        from .transcribe import read_wav
+        list(m.transcribe(read_wav(wav))[0])
     print(f"✅ Whisper prêt (modèle {a.model}, {m.model.device if hasattr(m.model, 'device') else 'cpu'})")
 
 
@@ -244,6 +245,12 @@ def cmd_prep(a):
         log("⚠️  Whisper n'est pas installé : préparation sans transcription (coupe des silences, zooms, "
             "pas de sous-titres ni de coupe des répétitions).")
         log("   Pour l'activer : installe Python 3.12 (Windows : winget install Python.Python.3.12) puis bash setup.sh")
+    except SystemExit:
+        raise
+    except Exception as e:  # modèle illisible, bibliothèque cassée… : la préparation va quand même au bout
+        no_whisper, t = True, {"words": []}
+        log(f"⚠️  Transcription impossible ({type(e).__name__}: {e}) : préparation sans transcription "
+            "(coupe des silences, zooms). Relance « Préparer » après « bin/monteur doctor », ou importe une transcription.")
     if style["cut"].get("enabled", True) and not a.no_cut and (t.get("words") or (no_whisper and has_audio)):
         edl = cut(ws, style, t if t.get("words") else None)
     else:
@@ -515,8 +522,11 @@ def main(argv=None):
     a = p.parse_args(argv)
     try:
         a.fn(a)
-    except RuntimeError as e:
-        log(str(e))
+    except RuntimeError as e:  # détail d'abord, cause en dernière ligne (c'est elle que l'Activité du Studio affiche)
+        lines = str(e).splitlines() or ["erreur"]
+        if len(lines) > 1:
+            log("\n".join(lines[1:][-20:]))
+        log("❌ " + lines[0])
         sys.exit(1)
 
 

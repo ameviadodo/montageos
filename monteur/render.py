@@ -49,13 +49,41 @@ def next_render(ws, draft):
     return d / f"{ws.source.stem}-v{n:02d}-{'draft' if draft else 'master'}.mp4"
 
 
+# vidéos de téléphone : 10 bits / HDR, horodatage de départ non nul → image 8 bits et temps remis à zéro
+SRC = "setpts=PTS-STARTPTS,format=yuv420p,"
+
+
 def fesc(path):
     return str(path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
 
 
-def render(ws, style, out=None, draft=False):
-    """Rendu master (ou draft rapide, demi-résolution) versionné dans renders/ ; master copié en final.mp4."""
+def render(ws, style, out=None, draft=False, safe=False):
+    """Rendu master (ou draft rapide, demi-résolution) versionné dans renders/ ; master copié en final.mp4.
+    Si ffmpeg échoue, nouvel essai automatique en mode sûr (sans zooms, transitions, incrustations ni bruitages)
+    pour livrer quand même, et la vraie cause est écrite dans <rush>.monteur/logs/."""
+    try:
+        return _render(ws, style, out, draft, safe)
+    except RuntimeError as e:
+        import time
+        logs = ws.dir / "logs"
+        logs.mkdir(exist_ok=True)
+        f = logs / f"rendu-{time.strftime('%Y%m%d-%H%M%S')}{'-sur' if safe else ''}.txt"
+        f.write_text(str(e), encoding="utf-8")
+        if safe:
+            raise RuntimeError(f"Rendu impossible, même en mode sûr — journal complet : {f}\n{e}")
+        log(f"⚠️  Le rendu a échoué : {str(e).splitlines()[1] if len(str(e).splitlines()) > 1 else e}")
+        log(f"   Journal complet : {f}")
+        log("   Nouvel essai en mode sûr (sans zooms, transitions, incrustations ni bruitages)…")
+        return _render(ws, style, out, draft, True)
+
+
+def _render(ws, style, out=None, draft=False, safe=False):
     plan = load_json(ws.plan, {})
+    if safe:
+        plan = {**plan, "zooms": [], "transitions": [], "broll": [], "sfx": [], "music": None,
+                "motion": [m for m in plan.get("motion", []) if m.get("type") != "hyperframes"]}
+        style = {**style, "zoom": {**style["zoom"], "enabled": False, "focus": "fixed"},
+                 "sfx": {**style["sfx"], "enabled": False}, "audio": {**style["audio"], "music": None}}
     video = ws.base_video()
     info = probe(video)
     W, H = out_size(info, style["format"])
@@ -110,9 +138,9 @@ def render(ws, style, out=None, draft=False):
             crop = f"crop={cw}:{ch}:'{xexpr}':0" if xexpr else f"crop={cw}:{ch}:(iw-ow)*{fx}:0"
         else:
             crop = f"crop=iw:iw*{H}/{W}:0:(ih-oh)*{fy}"
-        graph.append(f"[0:v]{crop},scale={W}:{H}:flags=lanczos,setsar=1[v0]")
+        graph.append(f"[0:v]{SRC}{crop},scale={W}:{H}:flags=lanczos,setsar=1[v0]")
     else:
-        graph.append(f"[0:v]scale={W}:{H}:flags=lanczos,setsar=1[v0]")
+        graph.append(f"[0:v]{SRC}scale={W}:{H}:flags=lanczos,setsar=1[v0]")
     cur = "v0"
     cropped_on_face = abs(sw / sh - W / H) > 0.01 and sw / sh > W / H and bool(face and face.get("faces"))
     zx = 0.5 if cropped_on_face else (face["median"][0] if face and face.get("median") else fx)
@@ -154,6 +182,10 @@ def render(ws, style, out=None, draft=False):
     overlays = [b for b in plan.get("broll", []) if b.get("file")]
     overlays += [dict(m, layout=m.get("layout", "overlay")) for m in plan.get("motion", [])
                  if m.get("type") == "hyperframes" and m.get("file")]
+    missing = [b for b in overlays if not (ws.dir / str(b["file"])).exists()]  # chemins absolus ou relatifs au projet
+    for b in missing:
+        log(f"⚠️  Fichier introuvable, ignoré : {b['file']} (à {b['start']:.1f}s) — relance « broll » ou « attach ».")
+    overlays = [b for b in overlays if b not in missing]
     for k, b in enumerate(overlays):
         s, e = b["start"], min(b["end"], dur)
         d = max(0.1, e - s)
@@ -211,15 +243,32 @@ def render(ws, style, out=None, draft=False):
     else:
         graph.append(f"anullsrc=r=48000:cl=stereo,atrim=0:{dur:.3f},asplit=2[voice][sc]")
     mix.append("[voice]")
-    for k, ev in enumerate(auto_events(plan, style)):
-        inputs += ["-i", ev["file"]]
-        ms = int(ev["t"] * 1000)
-        graph.append(f"[{n_in}:a]aresample=48000,aformat=channel_layouts=stereo,"
-                     f"adelay={ms}|{ms},volume={ev['gain']}[s{k}]")
-        mix.append(f"[s{k}]")
-        n_in += 1
+    events = [e for e in auto_events(plan, style) if e["t"] < dur]
+    if events:  # chaque fichier de bruitage n'est ouvert qu'une fois (asplit), puis tout est pré-mixé sur une piste
+        files = sorted({e["file"] for e in events})
+        for f in files:
+            n = sum(e["file"] == f for e in events)
+            inputs += ["-i", f]
+            graph.append(f"[{n_in}:a]aresample=48000,aformat=channel_layouts=stereo,asplit={n}"
+                         + "".join(f"[f{files.index(f)}_{j}]" for j in range(n)) if n > 1 else
+                         f"[{n_in}:a]aresample=48000,aformat=channel_layouts=stereo[f{files.index(f)}_0]")
+            n_in += 1
+        used, parts = {}, []
+        for k, ev in enumerate(events):
+            fi = files.index(ev["file"])
+            j = used[fi] = used.get(fi, -1) + 1
+            ms = int(ev["t"] * 1000)
+            graph.append(f"[f{fi}_{j}]adelay={ms}|{ms},volume={ev['gain']}[s{k}]")
+            parts.append(f"[s{k}]")
+        graph.append(f"{''.join(parts)}amix=inputs={len(parts)}:normalize=0:duration=longest,"
+                     f"apad=whole_dur={dur:.3f},atrim=0:{dur:.3f}[sfx]" if len(parts) > 1 else
+                     f"{parts[0]}apad=whole_dur={dur:.3f},atrim=0:{dur:.3f}[sfx]")
+        mix.append("[sfx]")
     ac = style["audio"]
     music = plan.get("music") or ac.get("music")
+    if music and not (ws.dir / str(music)).exists():
+        log(f"⚠️  Musique introuvable, ignorée : {music}")
+        music = None
     if music:
         inputs += ["-stream_loop", "-1", "-i", music]
         graph.append(f"[{n_in}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:{dur:.3f},"
@@ -242,7 +291,7 @@ def render(ws, style, out=None, draft=False):
     ex = style["export"]
     preset, crf = ("ultrafast", 30) if draft else (ex["preset"], ex["crf"])
     log(f"Rendu {'draft' if draft else 'master'} {W}x{H} @ {fps}fps — {len(zooms)} zooms, {len(trans)} transitions, "
-        f"{len(overlays)} visuels, {len(mix) - 1} pistes son…")
+        f"{len(overlays)} visuels, {len(events)} bruitages{' — MODE SÛR' if safe else ''}…")
     ffmpeg_progress([*inputs, "-filter_complex_script", script.name, "-map", "[vout]", "-map", "[aout]",
                      "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", preset, "-crf", str(crf),
                      "-r", str(fps), "-c:a", "aac", "-b:a", ex["audio_bitrate"], "-movflags", "+faststart",

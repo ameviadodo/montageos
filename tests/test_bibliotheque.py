@@ -153,3 +153,37 @@ class Studio(unittest.TestCase):
         from monteur.studio import API
         html = (Path(__file__).resolve().parent.parent / "ui" / "index.html").read_text(encoding="utf-8")
         self.assertEqual(int(re.search(r"const API_VERSION = (\d+)", html).group(1)), API)
+
+
+class Robustesse(unittest.TestCase):
+    def test_whisper_recoit_les_echantillons_sans_pyav(self):
+        """PyAV 19 a supprimé metadata_errors : on ne laisse plus faster-whisper ouvrir le fichier."""
+        import importlib.util
+        if not (importlib.util.find_spec("numpy") and importlib.util.find_spec("faster_whisper")):
+            self.skipTest("faster-whisper absent de ce Python")
+        import numpy as np
+        from unittest import mock
+        from monteur import transcribe as T
+        from monteur.common import ffmpeg
+        seen = {}
+
+        class Fake:
+            def transcribe(self, audio, **kw):
+                seen["type"] = type(audio)
+                seen["n"] = len(audio)
+                return iter([]), type("I", (), {"language": "fr"})()
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "a.mp4"
+            ffmpeg(["-f", "lavfi", "-i", "sine=f=440:d=1.5", "-c:a", "aac", src])
+            with mock.patch.object(T, "load_model", lambda m: Fake()):
+                T.transcribe(src, Path(d) / "t.json", "small", "fr")
+        self.assertIs(seen["type"], np.ndarray)
+        self.assertAlmostEqual(seen["n"] / 16000, 1.5, places=1)
+
+    def test_cause_ffmpeg(self):
+        from monteur.common import ffmpeg_cause
+        err = ("Input #0 …\n[in#1 @ 0x1] Error opening input: No such file or directory\n"
+               "[out#0/mp4 @ 0x2] Nothing was written into output file, because at least one of its streams received no packets.\n"
+               "Conversion failed!")
+        self.assertIn("No such file", ffmpeg_cause(err))
+        self.assertEqual(ffmpeg_cause("ligne seule"), "ligne seule")
