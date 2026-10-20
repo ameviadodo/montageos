@@ -89,6 +89,20 @@ def cmd_whisper(a):
     print(f"✅ Whisper prêt (modèle {a.model}, {m.model.device if hasattr(m.model, 'device') else 'cpu'})")
 
 
+def cmd_voix(a):
+    """Voix off française : un texte, ou un fichier (une réplique par ligne)."""
+    from .voiceover import engines, script, synth
+    if a.liste:
+        print("moteurs disponibles :", ", ".join(engines()) or "aucun (pip install edge-tts, ou espeak-ng)")
+        return
+    if a.fichier:
+        lines = [l.strip() for l in Path(a.fichier).read_text(encoding="utf-8").splitlines() if l.strip()]
+        script(lines, Path(a.out), a.moteur, a.voix, a.vitesse)
+    else:
+        wav, d, eng = synth(a.texte, a.out, a.moteur, a.voix, a.vitesse)
+        print(f"✅ {wav} ({d:.1f} s, moteur {eng})")
+
+
 def cmd_transcribe(a):
     from .transcribe import transcribe
     ws, _ = get_ws(a)
@@ -351,6 +365,15 @@ def main(argv=None):
     s.add_argument("--transcribe", action="store_true", help="mesure aussi le débit de parole")
     s.set_defaults(fn=cmd_style)
     sub.add_parser("cartes", help="Catalogue des cartes animées").set_defaults(fn=cmd_cartes)
+    s = sub.add_parser("voix", help="Voix off française (Edge TTS en ligne, sinon espeak-ng + MBROLA)")
+    s.add_argument("texte", nargs="?", default="")
+    s.add_argument("--out", default="voix.wav", help="fichier WAV (ou dossier avec --fichier)")
+    s.add_argument("--fichier", help="script texte : une réplique par ligne")
+    s.add_argument("--moteur", default="auto", choices=["auto", "edge", "espeak"])
+    s.add_argument("--voix", help="ex. fr-FR-DeniseNeural, fr-FR-HenriNeural, mb-fr1, mb-fr4")
+    s.add_argument("--vitesse", type=float, default=1.0)
+    s.add_argument("--liste", action="store_true", help="moteurs disponibles")
+    s.set_defaults(fn=cmd_voix)
     s = sub.add_parser("avant-apres", help="Format reel Avant/après (2 vidéos empilées + titre)")
     s.add_argument("apres", help="version transformée")
     s.add_argument("avant", help="version originale")

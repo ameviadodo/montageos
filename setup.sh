@@ -3,6 +3,7 @@
 #   bash setup.sh            # essentiel : ffmpeg, Whisper, yt-dlp, polices, bruitages
 #   bash setup.sh --ai       # + google-genai (Veo / Google Flow)
 #   bash setup.sh --motion   # + Hyperframes (Node ≥ 22) et ses skills
+#   bash setup.sh --voix     # + espeak-ng / MBROLA (voix off hors-ligne ; en ligne, edge-tts suffit)
 #   bash setup.sh --all
 # Linux, macOS et Windows (Git Bash). Variable MONTEUR_WHISPER_MODEL : modèle préchargé (défaut : small).
 set -euo pipefail
@@ -10,7 +11,8 @@ cd "$(dirname "$0")"
 ROOT="$PWD"
 . "$ROOT/bin/_env.sh"
 AI=0; MOTION=0
-for a in "$@"; do case "$a" in --ai) AI=1;; --motion) MOTION=1;; --all) AI=1; MOTION=1;; esac; done
+VOIX=0
+for a in "$@"; do case "$a" in --ai) AI=1;; --motion) MOTION=1;; --voix) VOIX=1;; --all) AI=1; MOTION=1; VOIX=1;; esac; done
 say() { printf '\033[1;35m[MonteurOS]\033[0m %s\n' "$*"; }
 SUDO=""; [ "$MONTEUR_WIN" = 0 ] && [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null && SUDO="sudo"
 
@@ -43,7 +45,7 @@ if ! VPY="$(monteur_venv_python "$ROOT")"; then
 fi
 say "Python : $VPY"
 "$VPY" -m pip install -q --upgrade pip
-PKGS=(faster-whisper yt-dlp "opencv-python-headless<5")
+PKGS=(faster-whisper yt-dlp "opencv-python-headless<5" edge-tts)
 [ "$AI" = 1 ] && PKGS+=(google-genai)
 say "Paquets Python : ${PKGS[*]}"
 "$VPY" -m pip install -q --upgrade "${PKGS[@]}"
@@ -82,6 +84,14 @@ if command -v npm >/dev/null && [ ! -s assets/vendor/gsap.min.js ]; then
   mkdir -p assets/vendor .cache/npm
   npm install --silent --no-audit --no-fund --prefix .cache/npm gsap@3.14.2 >/dev/null 2>&1 \
     && cp .cache/npm/node_modules/gsap/dist/gsap.min.js assets/vendor/ || true
+fi
+
+# 4c) Voix off hors-ligne (espeak-ng + voix françaises MBROLA)
+if [ "$VOIX" = 1 ] && ! command -v espeak-ng >/dev/null; then
+  if command -v apt-get >/dev/null; then $SUDO apt-get install -y -qq espeak-ng mbrola mbrola-fr1 mbrola-fr4 || true
+  elif command -v brew >/dev/null; then brew install espeak-ng || true
+  elif [ "$MONTEUR_WIN" = 1 ] && command -v winget >/dev/null; then winget install -e --id eSpeak-NG.eSpeak-NG --accept-source-agreements --accept-package-agreements || true
+  fi
 fi
 
 # 5) Hyperframes (animations HTML → vidéo)

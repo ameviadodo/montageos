@@ -10,4 +10,6 @@ PLAYWRIGHT=$(npm root -g)/playwright node docs/tuto/record.js http://127.0.0.1:8
 # intro / outro : cartes section.stage et citation.surligne (voir compose.py, attendu dans <dossier_tuto>/tuto.monteur/assets/motion/)
 "$(. bin/_env.sh; echo "${MONTEUR_PY[0]}")" docs/tuto/compose.py <dossier_tuto>      # → <dossier_tuto>/MonteurOS-tuto.mp4
 ```
+Voix off française : la liste `VOICE` de `compose.py` (une réplique par étape, calée sur les repères). Moteur `--moteur auto|edge|espeak` et voix `--voix fr-FR-DeniseNeural` ; `--sans-voix` pour la version muette. Chez toi, avec Internet, `edge` donne une voix neuronale naturelle.
+
 `record.js` pilote le navigateur et affiche un curseur jaune visible ; il note dans `marks.json` le moment de chaque étape. `compose.py` cale le bandeau sur ces repères : il suffit de modifier la liste `STEPS` pour changer les textes.

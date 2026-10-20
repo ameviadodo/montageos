@@ -19,5 +19,14 @@ description: Bruitages et sound design du montage — whoosh sur les zooms et tr
 ## Ponctuation manuelle (toi)
 `plan.json → sfx: [{"t": 12.4, "name": "ding", "gain": 0.4}]` — ding sur un chiffre, impact sur une révélation, camera sur une photo, glitch sur un « mais… ». Maximum 1 ponctuation toutes les 3–4 s, sinon c'est fatigant.
 
+## Voix off française
+```bash
+bin/monteur voix "Étape un : les projets." --out vo.wav            # une réplique
+bin/monteur voix --fichier script.txt --out voix/                     # une réplique par ligne → vo_00.wav…
+bin/monteur voix --liste                                              # moteurs disponibles
+```
+Moteurs (`--moteur auto` essaie dans l'ordre) : **edge** = voix neuronales Microsoft Edge (`fr-FR-DeniseNeural`, `fr-FR-HenriNeural`…, en ligne, installé par setup.sh) ; **espeak** = espeak-ng + MBROLA (`mb-fr1` homme, `mb-fr4` femme, hors-ligne, `bash setup.sh --voix`). Le lexique de `monteur/voiceover.py` corrige la prononciation des mots anglais (frame, draft, reel…). Pour une voix humaine ou clonée (ElevenLabs, Higgsfield…), dépose le WAV et place-le comme musique/SFX ou via `plan.sfx`.
+Mix : voix à −16 LUFS, musique en ducking dessous.
+
 ## Musique & mix
 `--music fond.mp3` (ou `plan.music`). Boucle automatique, fondu de fin 2 s, ducking (sidechain) sous la voix. `style.audio.music_volume` 0.08–0.16 (voix), 0.4–0.6 (produit sans voix). Sortie normalisée à `style.audio.lufs` (−14 réseaux sociaux, −16 YouTube long / documentaire).
