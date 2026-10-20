@@ -63,19 +63,41 @@ PKGS=(edge-tts)
 say "Paquets Python : ${PKGS[*]}"
 "$VPY" -m pip install -q --upgrade --prefer-binary "${PKGS[@]}" || say "⚠️  Certains paquets n'ont pas pu s'installer (voir ci-dessus)."
 WHISPER=0
+install_whisper() {
+  "$VPY" -m pip install -q --upgrade --only-binary=av,ctranslate2,tokenizers "${MONTEUR_WHISPER_PKG:-faster-whisper}" \
+    && "$VPY" -c "import faster_whisper" 2>/dev/null
+}
+# Python 3.12 dédié à MonteurOS via uv (téléchargé dans le cache uv, ton Python système n'est pas modifié)
+venv_with_uv() {
+  [ -n "${MONTEUR_NO_UV:-}" ] && return 1
+  say "Installation d'un Python 3.12 dédié à MonteurOS (uv) — une seule fois, ~30 Mo…"
+  "$VPY" -m pip install -q --upgrade uv || return 1
+  rm -rf .venv.new
+  # uv réutilise un Python 3.12 déjà présent, sinon le télécharge (python-build-standalone)
+  "$VPY" -m uv venv --seed --python 3.12 .venv.new >/dev/null || return 1
+  local c NEWPY=""
+  for c in "$ROOT/.venv.new/Scripts/python.exe" "$ROOT/.venv.new/bin/python"; do [ -x "$c" ] && NEWPY="$c"; done
+  [ -n "$NEWPY" ] || return 1
+  rm -rf .venv.old; mv .venv .venv.old && mv .venv.new .venv
+  VPY="$(monteur_venv_python "$ROOT")" || return 1
+  PYV="$(pyver "$VPY")"
+  say "Nouveau Python : $VPY ($PYV)"
+  "$VPY" -m pip install -q --upgrade --prefer-binary "${PKGS[@]}" || true
+}
 if [ "$LEGER" = 0 ]; then
   say "Moteur Whisper (faster-whisper)…"
-  if "$VPY" -m pip install -q --upgrade --only-binary=av,ctranslate2,tokenizers "${MONTEUR_WHISPER_PKG:-faster-whisper}" \
-     && "$VPY" -c "import faster_whisper" 2>/dev/null; then
-    WHISPER=1; say "Moteur Whisper installé (faster-whisper)."
+  if [ -z "${MONTEUR_FORCE_UV:-}" ] && install_whisper; then
+    WHISPER=1
+  elif venv_with_uv && install_whisper; then
+    WHISPER=1
+  fi
+  if [ "$WHISPER" = 1 ]; then
+    say "Moteur Whisper installé (faster-whisper, Python $PYV)."
   else
-    if whisper_ok_ver "$PYV"; then
-      say "⚠️  Whisper n'a pas pu s'installer avec Python $PYV. Vérifie ta connexion puis relance : bash setup.sh"
-    else
-      say "⚠️  Python $PYV est trop récent pour Whisper (aucun paquet prêt pour cette version)."
-      say "   Installe Python 3.12 puis relance setup.sh (il recréera .venv tout seul) :"
-      [ "$MONTEUR_WIN" = 1 ] && say "     winget install Python.Python.3.12" || say "     https://www.python.org/downloads/release/python-3120/"
-    fi
+    say "⚠️  Whisper local n'a pas pu s'installer (Python $PYV)."
+    say "   Solutions : 1) vérifie ta connexion et relance « bash setup.sh » ;"
+    say "               2) importe une transcription : « bin/monteur transcription RUSH.mp4 fichier.srt --prep »"
+    say "                  (ou bouton « Importer une transcription » du Studio ; export SRT de WhisperAI, style verbatim)."
     say "   Le reste de MonteurOS (rendu, voix off, tuto, cartes…) fonctionne sans Whisper."
   fi
 fi

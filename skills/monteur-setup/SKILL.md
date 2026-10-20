@@ -13,6 +13,11 @@ Tu as l'autorisation d'installer seul les **petites ressources gratuites** néce
 3. Options : `--motion` (Hyperframes : Node ≥ 22 requis, skill officielle `npx skills add heygen-com/hyperframes`), `--ai` (`google-genai` pour Veo), `--all`.
 4. Relance `bin/monteur doctor`.
 
+## Transcription « pour de bon »
+1. `bash setup.sh` : si Whisper ne s'installe pas avec le Python du venv (ex. 3.14), setup.sh installe `uv`, crée un **Python 3.12 dédié** (`.venv`, l'ancien devient `.venv.old`) et y installe faster-whisper. `MONTEUR_NO_UV=1` pour l'empêcher.
+2. Sans Whisper local : `bin/monteur transcription RUSH.mp4 fichier.srt --prep` importe une transcription faite ailleurs (export SRT/VTT/JSON de WhisperAI — connecteur Claude —, sous-titres, OpenAI…).
+3. La préparation ne bloque jamais : sans transcription, elle coupe les silences et place les zooms sur les coupes.
+
 ## Windows (Git Bash)
 - Lancer depuis **Git Bash** : `bash setup.sh`. Le venv est en `.venv/Scripts/python.exe` (détecté automatiquement par `bin/_env.sh`) ; cmd/PowerShell : `bin\monteur.cmd`.
 - Python : le lanceur `py` est préféré (3.12 > 3.11 > 3) ; le faux `python` du Microsoft Store est ignoré. S'il manque : `winget install Python.Python.3.12`.
