@@ -58,6 +58,24 @@ def cmd_doctor(a):
     sys.exit(0 if ok else 1)
 
 
+def cmd_whisper(a):
+    """Installe / précharge le modèle Whisper et le teste sur 1 s de silence."""
+    import tempfile
+    from .transcribe import load_model
+    try:
+        import faster_whisper
+    except ImportError:
+        raise SystemExit("faster-whisper absent du venv : lance bash setup.sh")
+    log(f"faster-whisper {faster_whisper.__version__} — chargement du modèle « {a.model} »…")
+    m = load_model(a.model)
+    with tempfile.TemporaryDirectory() as d:
+        wav = Path(d) / "s.wav"
+        from .common import ffmpeg
+        ffmpeg(["-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono", "-t", "1", wav])
+        list(m.transcribe(str(wav))[0])
+    print(f"✅ Whisper prêt (modèle {a.model}, {m.model.device if hasattr(m.model, 'device') else 'cpu'})")
+
+
 def cmd_transcribe(a):
     from .transcribe import transcribe
     ws, _ = get_ws(a)
@@ -234,13 +252,15 @@ def load_env():
     import os
     env = Path(__file__).resolve().parent.parent / ".env"
     if env.exists():
-        for line in env.read_text().splitlines():
+        for line in env.read_text(encoding="utf-8").splitlines():
             if "=" in line and not line.lstrip().startswith("#"):
                 k, v = line.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
 def main(argv=None):
+    from .common import utf8_console
+    utf8_console()
     load_env()
     p = argparse.ArgumentParser(prog="monteur", description="MonteurOS — monteur vidéo automatique")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -255,6 +275,9 @@ def main(argv=None):
         return s
 
     sub.add_parser("doctor", help="Vérifie l'installation").set_defaults(fn=cmd_doctor)
+    s = sub.add_parser("whisper", help="Précharge et teste le modèle Whisper")
+    s.add_argument("--model", default="small", help="tiny, base, small, medium, large-v3 ou dossier local")
+    s.set_defaults(fn=cmd_whisper)
     for name, fn, h in (("prep", cmd_prep, "Transcrit, coupe, planifie, cherche les B-roll"),
                         ("run", cmd_run, "Chaîne complète rush → vidéo finale")):
         s = vid(name, fn, h)

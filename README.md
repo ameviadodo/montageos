@@ -21,6 +21,8 @@ bash setup.sh            # ffmpeg, Whisper, yt-dlp, polices, bruitages
 bash setup.sh --all      # + Hyperframes (Node ≥ 22) + Veo/Google Flow
 cp .env.example .env     # clés API facultatives
 ```
+**Windows** : ouvre **Git Bash** dans le dossier et lance les mêmes commandes. Le venv est créé dans `.venv\Scripts\` et détecté automatiquement. Depuis cmd ou PowerShell, utilise `bin\monteur.cmd`. Il faut Python 3.12 (`winget install Python.Python.3.12`) et ffmpeg (`winget install Gyan.FFmpeg`, installé tout seul par `setup.sh` s'il manque).
+Pour précharger ou tester le moteur de transcription : `bin/monteur whisper --model small`.
 Dans Claude Code, un hook de démarrage lance l'installation si elle manque, et Claude répare lui-même ce qui manque (skill `monteur-setup`).
 
 ## Utilisation avec Claude
@@ -41,6 +43,8 @@ bin/monteur studio --root ~/Videos            # interface → http://127.0.0.1:8
 ```
 
 ## Interface MonteurOS Studio
+> 🎥 Tuto vidéo de prise en main : voir [`docs/tuto/`](docs/tuto/) (script d'enregistrement et de montage inclus).
+
 Une interface web locale : liste des rushs, cartes des 6 formats, lecteur Rush/Coupé/Final, timeline (zooms, B-roll, animations), inspecteur pour retoucher le plan, copie de style et sélecteur de charte. Les couleurs, polices et coins arrondis viennent de `ui/themes/<nom>.json`.
 
 ### Inspiré d'EditingOS

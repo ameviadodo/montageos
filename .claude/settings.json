@@ -8,6 +8,8 @@
       "Bash(ffprobe:*)",
       "Bash(.venv/bin/pip install:*)",
       "Bash(.venv/bin/python:*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(.venv/Scripts/pip.exe install:*)",
       "Bash(npx -y hyperframes@latest:*)",
       "Bash(npx -y skills add heygen-com/hyperframes:*)",
       "Bash(curl -fsSL -o assets/fonts/:*)",
@@ -19,7 +21,7 @@
   "hooks": {
     "SessionStart": [
       {"hooks": [{"type": "command", "timeout": 600,
-        "command": "test -x \"$CLAUDE_PROJECT_DIR/.venv/bin/python\" || bash \"$CLAUDE_PROJECT_DIR/setup.sh\" >/dev/null 2>&1 || true"}]}
+        "command": "test -x \"$CLAUDE_PROJECT_DIR/.venv/bin/python\" || test -x \"$CLAUDE_PROJECT_DIR/.venv/Scripts/python.exe\" || bash \"$CLAUDE_PROJECT_DIR/setup.sh\" >/dev/null 2>&1 || true"}]}
     ]
   }
 }

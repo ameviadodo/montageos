@@ -2,7 +2,7 @@
   "hooks": {
     "SessionStart": [
       {"hooks": [{"type": "command", "timeout": 600,
-        "command": "test -x \"${CLAUDE_PLUGIN_ROOT}/.venv/bin/python\" || bash \"${CLAUDE_PLUGIN_ROOT}/setup.sh\" >/dev/null 2>&1 || true"}]}
+        "command": "test -x \"${CLAUDE_PLUGIN_ROOT}/.venv/bin/python\" || test -x \"${CLAUDE_PLUGIN_ROOT}/.venv/Scripts/python.exe\" || bash \"${CLAUDE_PLUGIN_ROOT}/setup.sh\" >/dev/null 2>&1 || true"}]}
     ]
   }
 }

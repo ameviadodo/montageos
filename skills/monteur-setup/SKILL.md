@@ -13,6 +13,14 @@ Tu as l'autorisation d'installer seul les **petites ressources gratuites** néce
 3. Options : `--motion` (Hyperframes : Node ≥ 22 requis, skill officielle `npx skills add heygen-com/hyperframes`), `--ai` (`google-genai` pour Veo), `--all`.
 4. Relance `bin/monteur doctor`.
 
+## Windows (Git Bash)
+- Lancer depuis **Git Bash** : `bash setup.sh`. Le venv est en `.venv/Scripts/python.exe` (détecté automatiquement par `bin/_env.sh`) ; cmd/PowerShell : `bin\monteur.cmd`.
+- Python : le lanceur `py` est préféré (3.12 > 3.11 > 3) ; le faux `python` du Microsoft Store est ignoré. S'il manque : `winget install Python.Python.3.12`.
+- ffmpeg : `winget install Gyan.FFmpeg` ; même si le terminal n'a pas rechargé le PATH, MonteurOS le retrouve (WinGet\Links, choco, scoop).
+- `$'\r': command not found` → fins de ligne Windows : `git config core.autocrlf false`, puis `git checkout -- .` (le dépôt force LF via `.gitattributes`).
+- Whisper sur GPU NVIDIA sans cuDNN : bascule automatique sur CPU. Modèle préchargé par `bin/monteur whisper --model small`.
+- Venv créé sur un autre système (ex. dossier copié depuis WSL) : `setup.sh` le renomme en `.venv.old` et en recrée un.
+
 ## Dépannage
 | Symptôme | Correctif |
 |---|---|
@@ -22,7 +30,7 @@ Tu as l'autorisation d'installer seul les **petites ressources gratuites** néce
 | Node < 22 | `nvm install 22` (ou installeur nodejs.org) |
 | Hyperframes : script CDN bloqué | `monteur motion-new` embarque GSAP en local ; pour d'autres libs, copier le fichier dans `vendor/` du projet |
 | Police manquante dans les sous-titres | déposer le `.ttf` dans `assets/fonts/` et mettre son nom de famille dans le style |
-| yt-dlp « Sign in to confirm » / 403 | `.venv/bin/pip install -U yt-dlp` ; sinon demander le MP4 à l'utilisateur |
+| yt-dlp « Sign in to confirm » / 403 | `bin/monteur doctor` puis `<python du venv> -m pip install -U yt-dlp` ; sinon demander le MP4 à l'utilisateur |
 
 ## Clés API (facultatives — à demander seulement si la fonction est voulue)
 `PEXELS_API_KEY`, `PIXABAY_API_KEY` (B-roll vidéo gratuits), `FREESOUND_API_KEY` (bruitages réels), `MAGNIFIC_API_KEY` (upscale), `GEMINI_API_KEY` (Veo). À mettre dans `.env` à la racine (chargé par `bin/monteur`) ou dans l'environnement. Higgsfield passe par le connecteur MCP (pas de clé).

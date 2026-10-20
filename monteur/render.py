@@ -210,7 +210,7 @@ def render(ws, style, out=None, draft=False):
                  f"loudnorm=I={ac['lufs']}:TP=-1.5:LRA=11,aresample=48000[aout]")
 
     script = ws.dir / "render_filter.txt"
-    script.write_text(";\n".join(graph))
+    script.write_text(";\n".join(graph), encoding="utf-8")
     target = next_render(ws, draft)
     ex = style["export"]
     preset, crf = ("ultrafast", 30) if draft else (ex["preset"], ex["crf"])

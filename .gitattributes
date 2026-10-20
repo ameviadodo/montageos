@@ -1,0 +1,5 @@
+# Scripts bash en LF même sous Windows (autocrlf casse « bash setup.sh »), .cmd en CRLF
+*.sh text eol=lf
+bin/monteur text eol=lf
+*.cmd text eol=crlf
+*.py text eol=lf

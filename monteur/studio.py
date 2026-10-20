@@ -106,9 +106,10 @@ def run_job(args, label, video=None):
     log_activity({k: v for k, v in job.items() if k != "log"})
 
     def worker():
-        env = {**os.environ, "PYTHONPATH": str(ROOT), "PYTHONUNBUFFERED": "1"}
+        env = {**os.environ, "PYTHONPATH": str(ROOT), "PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1",
+               "PYTHONIOENCODING": "utf-8"}
         p = subprocess.Popen([sys.executable, "-m", "monteur", *args], stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT, text=True, env=env)
+                             stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", env=env)
         for line in p.stdout:
             job["log"].append(line.rstrip())
         job["status"] = "done" if p.wait() == 0 else "error"
