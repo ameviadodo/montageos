@@ -1,7 +1,8 @@
 // Enregistre le tuto MonteurOS Studio (écran réel, curseur visible) + chronologie des étapes.
-// Usage : node docs/tuto/record.js http://127.0.0.1:8770 <dossier_sortie>
+// Usage : node docs/tuto/record.js http://127.0.0.1:8770 <dossier_sortie> [vidéo_de_référence.mp4]
+// La vidéo de référence (n'importe quel MP4 monté) sert à montrer « Cloner un style viral » ; sans elle, l'étape est sautée.
 const { chromium } = require(process.env.PLAYWRIGHT || "playwright");
-const [, , BASE = "http://127.0.0.1:8765", OUT = "tuto-out"] = process.argv;
+const [, , BASE = "http://127.0.0.1:8765", OUT = "tuto-out", REF = ""] = process.argv;
 const W = 1600, H = 900;
 
 const CURSOR = () => {
@@ -76,6 +77,7 @@ const CURSOR = () => {
   await moveTo("#ts", { pause: 600 }); await click("#ts span[data-i='6']", { after: 800 });
   await moveTo("#tl .trk:nth-of-type(2)", { pause: 900 }); await moveTo("#tl .trk:nth-of-type(4)", { pause: 900 });
   await click("#tl .blk.an", { after: 1200 });
+  await type("#cardq", "chiffre"); await wait(600);
   await moveTo("#cardsel", { pause: 500 }); await page.selectOption("#cardsel", "stat.courbe"); await wait(800);
   await page.fill("[data-cv=value]", ""); await type("[data-cv=value]", "5");
   await page.fill("[data-cv=suffix]", ""); await type("[data-cv=unit]", " histoires");
@@ -83,16 +85,43 @@ const CURSOR = () => {
   await click("#mclose", { after: 900 });
   await moveTo("#cardput", { pause: 1200 });
 
-  // 5 · Bibliothèques
-  await click("nav a[data-v=bibliotheques]", { after: 2000 }); mark("biblio");
-  await moveTo("[data-fmt]", { pause: 1200 });
-  await scroll(420); await moveTo("[data-theme], .pill.y", { pause: 1200 });
-  await scroll(520); await moveTo("[data-style=nocturne]", { pause: 900 });
-  await click("[data-style=nocturne]", { after: 3800 }); mark("style");
-  await scroll(500); await wait(1500);
-  await click("[data-open='ecran.push3d']", { after: 4500 }); await click("#mclose", { after: 800 });
+  // 5 · Cuts entre les plans
+  await moveTo("#cutk", { pause: 400 }); mark("cuts");
+  await page.selectOption("#cutk", "mix"); await wait(1200);
+  await click("#cutapply", { after: 1500 });
+  await moveTo("#tl .trk:has-text('CUT')", { pause: 2600 });
 
-  // 6 · Activité
+  // 6 · Bibliothèques : formats multi-ratios, charte, cartes
+  await click("nav a[data-v=bibliotheques]", { after: 2000 }); mark("biblio");
+  await moveTo("[data-fmt]", { pause: 900 });
+  await click("[data-ratio='16:9']", { after: 1600 }); mark("ratios");
+  await click("[data-ratio='4:5']", { after: 1600 });
+  await click("[data-ratio='']", { after: 900 });
+  await moveTo("#addcharte .drop", { pause: 1800 }); mark("charte");
+  await page.locator("#cartes").scrollIntoViewIfNeeded(); await wait(900); mark("cartes");
+  await type("#cq", "avis"); await wait(1500);
+  await click("[data-open='avis.etoiles']", { after: 4200 }); await click("#mclose", { after: 700 });
+  await page.fill("#cq", ""); await page.dispatchEvent("#cq", "input"); await wait(400);
+
+  // 7 · Cloner un style viral → affinage → activer
+  if (REF) {
+    await page.locator("#addstyle").scrollIntoViewIfNeeded(); await wait(700); mark("clone");
+    await type("#addstyle .nm", "pub-virale");
+    await moveTo("#addstyle .links", { pause: 600 });
+    await page.setInputFiles("#addstyle .files", REF); await moveTo("#addstyle .drop", { pause: 1200 });
+    await click("#addstyle .act", { after: 500 });   // on l'activera depuis sa page
+    await click("#addstyle .go", { after: 1500 });
+    await page.waitForSelector("[data-style='pub-virale']", { timeout: 180000 }); await wait(1200);
+    await click("[data-style='pub-virale']", { after: 2200 }); mark("affinage");
+    await moveTo("table", { pause: 2500 });
+    await moveTo(".sheets a", { pause: 1500 });
+    await click("#activate", { after: 2000 }); mark("activer");
+  } else {
+    await scroll(520); await moveTo("[data-style=nocturne]", { pause: 900 });
+    await click("[data-style=nocturne]", { after: 3800 }); mark("style");
+  }
+
+  // 8 · Activité
   await click("nav a[data-v=activite]", { after: 2500 }); mark("activite");
   await moveTo(".tbl tr:nth-child(2)", { pause: 2500 });
   await click("nav a[data-v=projets]", { after: 2200 }); mark("fin");
