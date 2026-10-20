@@ -1,6 +1,8 @@
 """Suppression des blancs, des hésitations et des répétitions / prises ratées."""
+import os
 import re
 import unicodedata
+from pathlib import Path
 from difflib import SequenceMatcher
 
 from .common import ffmpeg_progress, log, probe, run, save_json
@@ -165,9 +167,11 @@ def render_cut(video, edl, out, workdir):
     script = workdir / "cut_filter.txt"
     script.write_text("\n".join(lines), encoding="utf-8")
     kept = sum(e - s for s, e in edl["keep"])
+    tmp = Path(out).with_name(Path(out).stem + ".tmp.mp4")  # nouveau fichier puis échange : l'historique garde l'ancien
     ffmpeg_progress(["-i", video, "-filter_complex_script", script, *maps, "-c:v", "libx264",
-                     "-preset", "fast", "-crf", "16", "-r", str(info["fps"]), "-c:a", "aac", "-b:a", "256k", out],
+                     "-preset", "fast", "-crf", "16", "-r", str(info["fps"]), "-c:a", "aac", "-b:a", "256k", tmp],
                     kept, "Coupe")
+    os.replace(tmp, out)
     log(f"Coupe : {edl['stats']['source_duration']}s → {edl['stats']['kept_duration']}s "
         f"({edl['stats']['segments']} segments) → {out}")
 

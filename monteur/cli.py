@@ -9,8 +9,13 @@ ASPECT_CHOICES = ["source", "9:16", "16:9", "1:1", "4:5", "3:4", "2:3", "21:9"]
 CUT_CHOICES = ["hard", "zoomcut", "flash", "dip", "whip", "glitch", "fondu", "mix"]
 
 
-def get_ws(a):
+def get_ws(a, snap=None):
+    """Projet + style. snap = libellé de l'action : instantané d'abord (annulable avec « monteur annuler »)."""
     ws = Workspace(a.video, getattr(a, "workdir", None))
+    if snap and not getattr(a, "_snapped", False):
+        from .history import snapshot
+        snapshot(ws, snap + (f" · style {a.style}" if getattr(a, "style", None) else ""))
+        a._snapped = True  # une seule photo par commande (prep → render dans « run »)
     style = load_style(a.style or load_json(ws.style, {}).get("name") or active_style())
     if a.style:
         save_json(ws.style, {"name": a.style})
@@ -123,7 +128,7 @@ def cmd_voix(a):
 def cmd_transcription(a):
     """Importe une transcription faite ailleurs (WhisperAI via Claude, sous-titres…) puis, au choix, prépare."""
     from .transcript_import import import_transcript
-    ws, _ = get_ws(a)
+    ws, _ = get_ws(a, "Import de transcription")
     import_transcript(ws, a.fichier, a.language or "fr")
     if a.prep:
         a.force, a.no_cut, a.no_broll, a.model = False, False, a.no_broll, "small"
@@ -138,21 +143,21 @@ def cmd_transcribe(a):
 
 def cmd_cut(a):
     from .cut import cut
-    ws, style = get_ws(a)
+    ws, style = get_ws(a, "Coupe")
     edl = cut(ws, style, load_json(ws.transcript))
     print(edl["stats"])
 
 
 def cmd_plan(a):
     from .plan import auto_plan
-    ws, style = get_ws(a)
+    ws, style = get_ws(a, "Plan automatique")
     auto_plan(ws, style, ws.base_transcript())
 
 
 def cmd_broll(a):
     from .broll import fetch
     from .plan import auto_plan
-    ws, style = get_ws(a)
+    ws, style = get_ws(a, "Recherche B-roll")
     if not ws.plan.exists():
         log("Pas encore de plan de montage : création automatique (lance « Préparer » pour un plan complet).")
         auto_plan(ws, style, ws.base_transcript())
@@ -163,7 +168,12 @@ def cmd_render(a):
     from .render import render
     from .verify import verify
     ws, style = get_ws(a)
+    if getattr(a, "style", None) and (load_json(ws.plan) or {}).get("style") not in (None, style.get("name")):
+        log(f"⚠️  Le plan a été construit avec le style « {load_json(ws.plan).get('style')} » : zooms, B-roll et transitions "
+            f"restent les siens. Pour tout passer en « {style.get('name')} » : monteur appliquer {a.video} --style {a.style}")
     out = render(ws, style, Path(a.out).resolve() if getattr(a, "out", None) else None, draft=getattr(a, "draft", False))
+    from .history import record_render
+    record_render(ws, out, f"Rendu {'draft' if getattr(a, 'draft', False) else 'master'} {out.name}")
     if getattr(a, "draft", False) or getattr(a, "verif", False):
         verify(ws, out)
 
@@ -210,7 +220,7 @@ def cmd_cartes(a):
 def cmd_carte(a):
     from .cards import render as card_render
     from .render import out_size
-    ws, style = get_ws(a)
+    ws, style = get_ws(a, f"Carte {a.card}")
     values = dict(kv.split("=", 1) for kv in (a.set or []))
     W, H = out_size(probe(ws.base_video()), style["format"])
     layout = None
@@ -234,7 +244,7 @@ def cmd_prep(a):
     from .plan import auto_plan
     from .transcribe import transcribe
     from .transcribe import NoWhisper
-    ws, style = get_ws(a)
+    ws, style = get_ws(a, "Préparation")
     has_audio = probe(ws.source)["has_audio"] and not silent(ws.source)
     no_whisper = False
     try:
@@ -257,8 +267,12 @@ def cmd_prep(a):
         ws.cut_video.unlink(missing_ok=True)
         save_json(ws.transcript, t)
         edl = {"stats": "coupe désactivée"}
+    old_style = (load_json(ws.plan) or {}).get("style")
     if not ws.plan.exists() or a.force:
         auto_plan(ws, style, ws.base_transcript())
+    elif old_style and old_style != style.get("name"):  # style changé depuis la bibliothèque : le plan le suit
+        from .plan import apply_style
+        apply_style(ws, style)
     if not a.no_broll:
         fetch(ws, portrait(ws, style))
     print(f"\nDossier : {ws.dir}\nCoupe : {edl['stats']}\nÉdite {ws.plan} puis : monteur render {a.video}")
@@ -277,6 +291,35 @@ def cmd_slideshow(a):
 def cmd_charte(a):
     from .charte import extract
     extract(a.sources, a.name, with_style=not a.sans_style)
+
+
+def cmd_appliquer(a):
+    """Applique le style choisi à un projet existant : zooms, B-roll, transitions, titre et CTA recalculés."""
+    from .plan import apply_style
+    if not a.style:
+        raise SystemExit("Précise le style : monteur appliquer RUSH.mp4 --style hormozi")
+    ws, style = get_ws(a, "Application du style")
+    apply_style(ws, style)
+    if not a.no_broll:
+        from .broll import fetch
+        fetch(ws, portrait(ws, style))
+
+
+def cmd_annuler(a):
+    from .history import entries, undo
+    ws = Workspace(a.video, getattr(a, "workdir", None))
+    if a.liste:
+        for e in reversed(entries(ws)):
+            print(f"{e['n']:>3}  {time_ago(e['t']):<14} {e['label']}")
+        return
+    undo(ws, a.jusqua)
+
+
+def time_ago(t):
+    import time
+    d = int(time.time() - t)
+    return "à l'instant" if d < 60 else f"il y a {d // 60} min" if d < 3600 else f"il y a {d // 3600} h" if d < 86400 \
+        else f"il y a {d // 86400} j"
 
 
 def cmd_activer(a):
@@ -341,7 +384,7 @@ def cmd_motion_render(a):
 
 def cmd_attach(a):
     from .generate import attach
-    ws, _ = get_ws(a)
+    ws, _ = get_ws(a, "Fichier branché sur le plan")
     attach(ws, a.index, a.file, a.kind, a.section)
 
 
@@ -406,6 +449,11 @@ def main(argv=None):
     s.add_argument("--model", default="small")
     s.add_argument("--language")
     vid("cut", cmd_cut, "Supprime blancs, hésitations, répétitions")
+    s = vid("appliquer", cmd_appliquer, "Applique un style à un projet (zooms, B-roll, transitions, titre recalculés)")
+    s.add_argument("--no-broll", action="store_true")
+    s = vid("annuler", cmd_annuler, "Annule la dernière action sur un projet (--liste : historique)")
+    s.add_argument("--liste", action="store_true")
+    s.add_argument("--jusqua", type=int, metavar="N", help="revient juste avant l'action n°N")
     vid("plan", cmd_plan, "Génère le plan auto (zooms, B-roll, animations)")
     vid("broll", cmd_broll, "Télécharge les illustrations du plan")
     s = vid("render", cmd_render, "Rendu versionné (master, ou --draft rapide + vérification)")

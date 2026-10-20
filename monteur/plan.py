@@ -123,7 +123,24 @@ def auto_plan(ws, style, transcript):
     from .transitions import auto_transitions
     plan["transitions"] = auto_transitions(ws, style, dur)
     plan["mode"] = style.get("mode", style.get("name"))
+    plan["style"] = style.get("name")
     save_json(ws.plan, plan)
     log(f"Plan : {len(plan['zooms'])} zooms, {len(plan['transitions'])} transitions, {len(plan['broll'])} B-roll, "
         f"{len(plan['motion'])} animations → {ws.plan}")
+    return plan
+
+
+def apply_style(ws, style):
+    """Passe un projet existant à un autre style : zooms, transitions, B-roll, titre et CTA sont recalculés ;
+    ce que tu as posé à la main (cartes animées, bruitages ajoutés, mots en valeur, musique, notes) est gardé."""
+    from .common import load_json
+    old = load_json(ws.plan, {}) or {}
+    plan = auto_plan(ws, style, ws.base_transcript())
+    plan["motion"] += [m for m in old.get("motion", []) if m.get("type") == "hyperframes"]
+    for k in ("sfx", "emphasis_words", "music", "notes"):
+        if old.get(k):
+            plan[k] = old[k]
+    save_json(ws.plan, plan)
+    log(f"Style « {style.get('name')} » appliqué : {len(plan['zooms'])} zooms, {len(plan['transitions'])} transitions, "
+        f"{len(plan['broll'])} B-roll, bruitages « {style['sfx'].get('on_zoom', {})} » — les cartes posées sont gardées.")
     return plan

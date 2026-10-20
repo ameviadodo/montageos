@@ -96,6 +96,13 @@ td .nm{font-weight:800}td .ds{font-family:var(--font-mono);font-size:11px;color:
 .cv .vp{position:relative;aspect-ratio:16/9;overflow:hidden;background:repeating-conic-gradient(#0F1422 0 25%,#0B0F1A 0 50%) 0 0/24px 24px;max-height:420px;margin:0 auto}
 .cv iframe{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0;pointer-events:none}
 .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.upbar{height:6px;border-radius:99px;background:var(--surface2);overflow:hidden;margin-top:8px}.upbar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.hist{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.hist div{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--surface2);border-radius:10px;font-size:13px}
+.hist div span{flex:1}.hist div small{color:var(--muted);font-family:var(--font-mono);font-size:11px;white-space:nowrap}
+.hist div:first-child{border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+body.drag::after{content:"Dépose ta vidéo pour l'ajouter aux projets";position:fixed;inset:12px;border:3px dashed var(--accent);border-radius:20px;
+  background:rgba(7,10,18,.85);color:var(--accent);display:flex;align-items:center;justify-content:center;font:800 26px var(--font-body);z-index:50}
 .sheets{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px}
 .sheets a{display:block;text-decoration:none;border:1px solid var(--surface2);border-radius:10px;overflow:hidden;background:var(--bg)}
 .sheets img{display:block;width:100%;height:140px;object-fit:cover}.sheets span{display:block;font-size:10px;padding:6px 8px;color:var(--muted)}
@@ -265,6 +272,14 @@ async function restartServer() {
   toast("Le Studio ne répond pas : Ctrl+C dans le terminal, puis bin/monteur studio");
 }
 window.addEventListener("hashchange", route);
+window.addEventListener("keydown", e => {  // Ctrl+Z dans le Studio = Annuler (hors saisie de texte)
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)
+      && location.hash.startsWith("#/studio/") && $("#sundo") && !$("#sundo").disabled) { e.preventDefault(); $("#sundo").click(); }
+});
+const onProjets = () => /^#?\/?(projets)?$/.test(location.hash) || location.hash.startsWith("#/projets");  // dépôt global : page Projets seulement
+["dragenter", "dragover"].forEach(ev => window.addEventListener(ev, e => { if (onProjets() && e.dataTransfer?.types?.includes("Files")) { e.preventDefault(); document.body.classList.add("drag"); } }));
+["dragleave", "drop"].forEach(ev => window.addEventListener(ev, e => { if (ev === "dragleave" && e.relatedTarget) return; document.body.classList.remove("drag"); }));
+window.addEventListener("drop", e => { if (!onProjets() || !e.dataTransfer?.files?.length) return; e.preventDefault(); addRushes(e.dataTransfer.files); });
 $("#refresh").onclick = () => { route(); toast("Actualisé"); };
 $("#jobpill").onclick = () => location.hash = "#/activite";
 
@@ -284,8 +299,11 @@ async function vProjets() {
       <div class="stat"><b style="color:var(--danger)">${s.perimes}</b><span class="cap">rendus périmés</span><small>à re-rendre</small></div>
       <div class="stat"><b>${size(s.disque)}</b><span class="cap">disque rendus</span><small>${s.retours} retour(s) ouvert(s)</small></div>
     </div>
-    <h1 class="page">Projets<small>${s.projets} / ${s.projets}</small></h1>
-    <p class="sub">Le système de fichiers fait foi. Relevé ${ago(Date.now() / 1000)} en ${ms} ms.</p>
+    <div class="row" style="justify-content:space-between;align-items:flex-end">
+      <div><h1 class="page">Projets<small>${s.projets} / ${s.projets}</small></h1>
+        <p class="sub">Le système de fichiers fait foi. Relevé ${ago(Date.now() / 1000)} en ${ms} ms.</p></div>
+      <label class="btn y" style="margin-bottom:14px">📁 Ajouter une vidéo depuis l'ordinateur<input type="file" id="addrush" accept="video/*,.mkv,.m4v" multiple hidden></label></div>
+    <div class="panel" hidden><span class="cap" id="uplab">Ajout…</span><div class="upbar"><i id="upbar"></i></div></div>
     <div class="filters">
       <input type="search" id="q" placeholder="Chercher un nom ou un slug" value="${esc(F.q)}">
       ${opts("family", "Toutes les familles")}${opts("type", "Tous les types")}${opts("format", "Tous les formats")}${opts("status", "Tous les états")}
@@ -300,6 +318,7 @@ async function vProjets() {
   $("#sort").onchange = e => { F.sort = e.target.value; drawGrid(); };
   $("#stale").onchange = e => { F.stale = e.target.checked; drawGrid(); };
   $("#hideRaw").onchange = e => { F.hideRaw = e.target.checked; drawGrid(); };
+  $("#addrush").onchange = e => addRushes(e.target.files);
   drawGrid();
 }
 function drawGrid() {
@@ -354,7 +373,9 @@ async function vProjet(video) {
     <div class="panel actions" style="margin-top:22px"><span class="cap">Actions</span>
       <div class="row" style="margin-bottom:10px"><span class="cap acc">Pendant le montage</span>
         <select id="stsel">${p.styles.map(s => `<option ${s === p.style ? "selected" : ""}>${s}</option>`).join("")}</select>
-        <select id="asp"><option value="source">Format du style</option><option>9:16</option><option>16:9</option><option>1:1</option><option>4:5</option></select></div>
+        <select id="asp"><option value="source">Format du style</option>${["9:16", "16:9", "1:1", "4:5", "3:4", "2:3", "21:9"].map(r => `<option>${r}</option>`).join("")}</select>
+        <span class="muted" id="stinfo" style="font-size:12px"></span></div>
+      <div class="act"><button class="btn y" data-a="appliquer">Appliquer ce style</button><p>Passe le projet au style choisi : zooms, B-roll, bruitages, transitions, titre et CTA recalculés. Les cartes que tu as posées sont gardées. Annulable.</p></div>
       <div class="act"><button class="btn" data-a="prep">Préparer</button><p>Transcrit, coupe blancs / hésitations / prises ratées, construit le plan et cherche les illustrations.</p></div>
       <div class="act"><button class="btn y" data-a="draft">Rendu draft + vérif</button><p>Le geste courant. Rend en qualité brouillon (demi-résolution, ~4× plus vite) puis contrôle le fichier produit : durée, noirs, blancs oubliés, saturation, mots coupés, visuels manquants.</p></div>
       <div class="act"><button class="btn" data-a="render">Rendu master</button><p>Qualité finale, versionnée dans <span class="mono">renders/</span> et copiée en <span class="mono">final.mp4</span>.</p></div>
@@ -362,7 +383,16 @@ async function vProjet(video) {
       <div class="act"><button class="btn" data-a="broll">Chercher les B-roll</button><p>Télécharge les illustrations du plan encore vides (Pexels, Pixabay, Wikimedia).</p></div>
       <div class="act"><button class="btn" data-a="livre">Marquer livré</button><p>Passe le projet à l'état « livré ».</p></div>
       <div class="log" id="joblog" style="margin-top:10px">—</div>
-    </div>`;
+    </div>
+    <div class="panel"><div class="row" style="justify-content:space-between"><span class="cap acc">Historique</span>
+      <button class="btn" id="undo" ${p.history.length ? "" : "disabled"}>↶ Annuler la dernière action</button></div>
+      <div class="hist">${p.history.map((e, i) => `<div><span>${esc(e.label)}</span><small>${ago(e.t)}</small>${i ? `<button class="btn ghost" data-undo="${e.n}" title="Annule cette action et toutes celles d'après">↶ revenir avant</button>` : ""}</div>`).join("")
+        || '<p class="muted">Aucune action pour l\'instant. Chaque préparation, coupe, plan, carte, style appliqué ou rendu sera annulable ici.</p>'}</div></div>`;
+  const stInfo = () => { const v = $("#stsel").value;
+    $("#stinfo").innerHTML = p.plan_style && v !== p.plan_style ? `⚠️ le plan vient du style « ${esc(p.plan_style)} » : le rendu appliquera d'abord « ${esc(v)} »` : p.plan_style ? `plan : style « ${esc(p.plan_style)} »` : ""; };
+  $("#stsel").onchange = stInfo; stInfo();
+  $("#undo").onclick = () => undoAction(p.video);
+  $$("[data-undo]").forEach(b => b.onclick = () => undoAction(p.video, +b.dataset.undo));
   $("#cp").onclick = () => { navigator.clipboard?.writeText(p.dir); toast("Chemin copié"); };
   $("#trfile").onchange = async e => { const f = e.target.files[0]; if (!f) return;
     const r = await api("/api/transcript", {video: p.video, name: f.name, content: await f.text()});
@@ -370,10 +400,30 @@ async function vProjet(video) {
   $$(".deliv div[data-r]").forEach(d => d.onclick = () => { STATE.sel = d.dataset.r; vProjet(video); });
   $$(".actions [data-a]").forEach(b => b.onclick = () => {
     const a = b.dataset.a, base = {video: p.video, style: $("#stsel").value, aspect: $("#asp").value};
-    if (a === "draft") run("render", {...base, draft: true});
+    const restyle = p.plan && p.plan_style && base.style !== p.plan_style;  // style changé : on l'applique avant le rendu
+    if ((a === "draft" || a === "render") && restyle)
+      run("appliquer", base, j => j.status === "done" ? run("render", {...base, draft: a === "draft"}) : route());
+    else if (a === "draft") run("render", {...base, draft: true});
     else if (a === "livre") run("projet", {video: p.video, etat: "livré"});
     else run(a, base);
   });
+}
+
+async function applyToProjects(style) {  // style activé dans la bibliothèque → proposé aux projets existants
+  const d = await api("/api/projects"); const todo = (d.projects || []).filter(x => x.style !== style && x.status !== "brut");
+  if (!todo.length || !confirm(`Appliquer aussi « ${style} » à ${todo.length} projet(s) existant(s) ?\n(zooms, B-roll, bruitages, transitions recalculés — annulable dans chaque projet)\n\n• ${todo.map(x => x.video).join("\n• ")}`)) return;
+  const next = i => i < todo.length ? run("appliquer", {video: todo[i].video, style}, () => next(i + 1)) : toast(`« ${style} » appliqué à ${todo.length} projet(s) ✓`);
+  next(0);
+}
+async function undoAction(video, n) {
+  const h = (STATE.p && STATE.p.history) || [];
+  const what = n ? h.filter(e => e.n >= n).map(e => e.label) : h.slice(0, 1).map(e => e.label);
+  if (!what.length) return toast("Rien à annuler");
+  if (n && what.length > 1 && !confirm(`Annuler ces ${what.length} actions ?\n\n• ${what.join("\n• ")}`)) return;
+  const r = await api("/api/undo", {video, n});
+  if (r.error) return toast(r.error);
+  toast("↶ Annulé : " + r.undone.join(", "));
+  route();
 }
 
 // ---------- Retours frame par frame ----------
@@ -462,7 +512,8 @@ async function vStudio(video) {
     <div class="row" style="justify-content:space-between;margin-bottom:14px">
       <div class="row"><h1 class="page" style="font-size:30px">Studio</h1>
         <select id="sp">${(STATE.projects || [{video}]).map(x => `<option ${x.video === video ? "selected" : ""}>${esc(x.video)}</option>`).join("")}</select></div>
-      <div class="row"><button class="btn" id="save" ${p.plan ? "" : "disabled"}>Enregistrer le plan</button>
+      <div class="row"><button class="btn ghost" id="sundo" title="Annuler la dernière action (Ctrl+Z)" ${p.history.length ? "" : "disabled"}>↶ Annuler${p.history.length ? ` <small class="muted">${esc(p.history[0].label.slice(0, 28))}</small>` : ""}</button>
+        <button class="btn" id="save" ${p.plan ? "" : "disabled"}>Enregistrer le plan</button>
         <button class="btn y" id="draft">Rendu draft + vérif</button><a class="btn ghost" href="#/projet/${encodeURIComponent(video)}">Le projet →</a></div></div>
     ${p.plan ? "" : `<div class="panel">Pas encore de plan. <button class="btn y" id="prep">Préparer ce rush</button></div>`}
     <div class="editor">
@@ -481,6 +532,7 @@ async function vStudio(video) {
   $("#prep") && ($("#prep").onclick = () => run("prep", {video}));
   $("#save").onclick = () => savePlan(true);
   $("#draft").onclick = async () => { await savePlan(); run("render", {video, draft: true}); };
+  $("#sundo").onclick = async () => { await savePlan(); undoAction(video); };
   const v = $("#sv");
   $$("#ts span[data-t]").forEach(s => s.onclick = () => v.currentTime = +s.dataset.t);
   v.ontimeupdate = () => {
@@ -573,20 +625,40 @@ function cardTile(c, prefix = "") { const [W, H] = dims();
 const ratioChips = rs => (rs || []).map(r => `<span class="rt">${esc(r)}</span>`).join("");
 const matchRatio = rs => !LIBF.ratio || !(rs || []).length || rs.includes(LIBF.ratio);
 const norm = t => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+function sendFile(url, file, onProgress) {  // envoi avec progression (XHR : fetch ne donne pas l'avancement)
+  return new Promise(ok => { const x = new XMLHttpRequest(); x.open("POST", url);
+    x.upload.onprogress = e => e.lengthComputable && onProgress && onProgress(e.loaded / e.total);
+    x.onload = () => { try { ok(JSON.parse(x.responseText)); } catch (e) { ok({error: "réponse illisible"}); } };
+    x.onerror = () => ok({error: "envoi interrompu"}); x.send(file); });
+}
 async function uploadFiles(files, kind, name) {
   const out = [];
   for (const f of files) {
     toast(`Envoi de ${f.name} (${size(f.size)})…`);
-    const r = await fetch(`/api/upload?kind=${kind}&name=${encodeURIComponent(name)}&filename=${encodeURIComponent(f.name)}`, {method: "POST", body: f}).then(r => r.json());
+    const r = await sendFile(`/api/upload?kind=${kind}&name=${encodeURIComponent(name)}&filename=${encodeURIComponent(f.name)}`, f);
     if (r.error) { toast(r.error); return null; }
     out.push(r.path);
   }
   return out;
 }
+async function addRushes(files) {  // vidéos choisies sur l'ordinateur → nouveaux projets
+  files = [...files].filter(f => /\.(mp4|mov|mkv|webm|m4v)$/i.test(f.name));
+  if (!files.length) return toast("Choisis un fichier vidéo (mp4, mov, mkv, webm, m4v)");
+  const bar = $("#upbar"), lab = $("#uplab"); if (bar) bar.parentElement.hidden = false;
+  let last = null;
+  for (const [k, f] of files.entries()) {
+    if (lab) lab.textContent = `Ajout de ${f.name} (${size(f.size)}) — ${k + 1}/${files.length}`;
+    const r = await sendFile(`/api/upload?kind=rush&filename=${encodeURIComponent(f.name)}`, f, x => bar && (bar.style.width = Math.round(x * 100) + "%"));
+    if (r.error) { toast(r.error); break; }
+    last = r.video; toast(`${r.video} ajoutée ✓`);
+  }
+  if (last) location.hash = "#/projet/" + encodeURIComponent(last); else route();
+}
 function addBox(id, title, hint, button, extra = "") {
   return `<div class="addbox" id="${id}"><div><b>${title}</b><div class="muted" style="font-size:12px;margin-top:4px">${hint}</div></div>
     <div><input class="nm" placeholder="Nom (ex. mrbeast, ma-marque)" style="width:100%;margin-bottom:8px"><textarea class="links" placeholder="Liens YouTube, Shorts, TikTok, Instagram, Vimeo… (un par ligne)"></textarea></div>
-    <div><label class="drop">⬆ Glisse ou choisis des échantillons MP4 / captures<input type="file" class="files" accept="video/*,image/*" multiple hidden></label><div class="fl muted mono" style="font-size:11px;margin-top:6px"></div>${extra}</div>
+    <div><label class="btn" style="display:block;text-align:center;margin-bottom:8px">📁 Choisir une vidéo sur l'ordinateur<input type="file" class="files" accept="video/*,image/*" multiple hidden></label>
+      <div class="drop">…ou glisse ici des MP4 / captures</div><div class="fl muted mono" style="font-size:11px;margin-top:6px"></div>${extra}</div>
     <div><button class="btn y go">${button}</button></div></div>`;
 }
 function bindAddBox(id, kind, action, extra = () => ({})) {
@@ -646,7 +718,7 @@ async function vBiblio() {
   $$("[data-fmt]").forEach(r => r.onclick = () => location.hash = "#/format/" + r.dataset.fmt);
   $$("[data-style]").forEach(r => r.onclick = e => { if (!e.target.closest("button")) location.hash = "#/style/" + r.dataset.style; });
   $$("[data-theme]").forEach(b => b.onclick = async () => { await api("/api/theme", {theme: b.dataset.theme}); $("#theme").href = "/theme.css?t=" + Date.now(); vBiblio(); });
-  $$("[data-activate]").forEach(b => b.onclick = async () => { const r = await api("/api/style/activate", {name: b.dataset.activate}); toast(r.error || `Style « ${b.dataset.activate} » activé pour les nouveaux projets`); vBiblio(); });
+  $$("[data-activate]").forEach(b => b.onclick = async () => { const r = await api("/api/style/activate", {name: b.dataset.activate}); toast(r.error || `Style « ${b.dataset.activate} » activé pour les nouveaux projets`); await vBiblio(); if (!r.error) applyToProjects(b.dataset.activate); });
   $$("[data-ratio]").forEach(b => b.onclick = () => { LIBF.ratio = b.dataset.ratio; saveLibf(); vBiblio(); });
   $$("[data-cat]").forEach(b => b.onclick = () => { LIBF.cat = b.dataset.cat; saveLibf(); $$("[data-cat]").forEach(x => x.classList.toggle("on", x === b)); drawCards(L.cards); });
   $("#cq").oninput = e => { LIBF.q = e.target.value; saveLibf(); clearTimeout($("#cq")._t); $("#cq")._t = setTimeout(() => drawCards(L.cards), 180); };
@@ -694,7 +766,9 @@ async function vStyle(name) {
     <h1 class="page" style="margin-top:6px">${esc(name)}</h1>
     <div class="row" style="justify-content:space-between;align-items:flex-start">
       <p class="sub" style="max-width:640px">${esc(s.description)}</p>
-      <div class="row">${s.active ? '<span class="pill y">STYLE ACTIF</span>' : '<button class="btn y" id="activate">Activer ce style</button>'}<button class="btn ghost" id="hidev">Masquer les variantes</button><button class="btn ghost" id="openall">Tout ouvrir</button><span class="mono muted">${s.cards.length} cartes</span></div></div>
+      <div class="row"><select id="applyp"><option value="">Appliquer à un projet…</option>${(STATE.projects || []).map(x => `<option>${esc(x.video)}</option>`).join("")}</select>
+        <button class="btn" id="applyb">Appliquer</button>
+        ${s.active ? '<span class="pill y">STYLE ACTIF</span>' : '<button class="btn y" id="activate">Activer ce style</button>'}<button class="btn ghost" id="hidev">Masquer les variantes</button><button class="btn ghost" id="openall">Tout ouvrir</button><span class="mono muted">${s.cards.length} cartes</span></div></div>
     <div class="row" style="margin-bottom:10px">${sw(s.palette)} ${fontsCell(s.fonts)}</div>
     ${s.sources.length ? `<div class="row muted" style="font-size:12px;margin-bottom:6px">Copié de : ${s.sources.map(u => /^https?:/.test(u) ? `<a href="${esc(u)}" target="_blank">${esc(u)}</a>` : `<span class="mono">${esc(u.split(/[\\/]/).pop())}</span>`).join(" · ")}</div>` : ""}
     <div class="row muted mono" style="font-size:12px;margin-bottom:6px">format ${esc(s.format)} · ratios ${esc(s.ratios.join(", ") || "tous")} · cut ${esc(s.cut)}${s.layout ? " · layout " + esc(s.layout) : ""} · <span class="acc" style="color:var(--accent)">bin/monteur prep RUSH.mp4 --style ${esc(name)}</span></div>
@@ -713,7 +787,11 @@ async function vStyle(name) {
       `(police exacte, majuscules, cartouche, couleurs, cut.transition, zooms, cartes de la bibliothèque) et corrige ce qui ne colle pas.` +
       (s.affinage ? `\nMesures auto : ${JSON.stringify(s.affinage)}` : "");
     try { await navigator.clipboard.writeText(txt); toast("Copié : colle-le dans Claude"); } catch (e) { prompt("Copie ce texte pour Claude :", txt); } });
-  $("#activate") && ($("#activate").onclick = async () => { await api("/api/style/activate", {name}); toast(`Style « ${name} » activé pour les nouveaux projets`); vStyle(name); });
+  if (!STATE.projects) api("/api/projects").then(d => { STATE.projects = d.projects || [];
+    $("#applyp") && ($("#applyp").innerHTML = '<option value="">Appliquer à un projet…</option>' + STATE.projects.map(x => `<option>${esc(x.video)}</option>`).join("")); });
+  $("#applyb").onclick = () => { const v = $("#applyp").value; if (!v) return toast("Choisis le projet");
+    run("appliquer", {video: v, style: name}, j => { if (j.status === "done") location.hash = "#/projet/" + encodeURIComponent(v); }); };
+  $("#activate") && ($("#activate").onclick = async () => { await api("/api/style/activate", {name}); toast(`Style « ${name} » activé pour les nouveaux projets`); await vStyle(name); applyToProjects(name); });
   $("#hidev").onclick = () => $$(".cards").forEach(c => c.hidden = true);
   $("#openall").onclick = () => $$(".cards").forEach(c => c.hidden = false);
 }

@@ -82,6 +82,15 @@ bin/monteur render rush.mp4 --aspect 4:5 --cuts mix --draft
 bin/monteur affiner viral                                           # vrais cuts, zooms, sous-titres de la référence
 ```
 
+### Annuler, appliquer un style, ajouter une vidéo
+- **Annuler** : chaque action (préparation, coupe, plan, carte, cuts, style appliqué, rendu) est photographiée avant ;
+  « ↶ Annuler » dans le Studio (ou Ctrl+Z), historique sur la page du projet, `bin/monteur annuler rush.mp4 [--liste]`.
+- **Appliquer un style à un projet existant** : zooms, B-roll, bruitages, transitions, titre et CTA recalculés
+  (les cartes posées sont gardées) — bouton « Appliquer ce style », depuis la bibliothèque, ou `bin/monteur appliquer rush.mp4 --style hormozi`.
+  Activer un style propose de l'appliquer aux projets existants.
+- **Ajouter une vidéo depuis l'ordinateur** : bouton sur la page Projets (ou glisser-déposer) ; « Choisir une vidéo sur
+  l'ordinateur » à côté des liens pour cloner un style ou extraire une charte.
+
 > **Après un `git pull`**, redémarre le Studio (Ctrl+C puis `bin/monteur studio`) — ou clique sur le bandeau
 > « MonteurOS a été mis à jour → Redémarrer le Studio » qui apparaît tout seul.
 
