@@ -190,7 +190,8 @@ td .nm{font-weight:800}td .ds{font-family:var(--font-mono);font-size:11px;color:
 
 <script>
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const api = (u, body) => fetch(u, body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {}).then(r => r.json());
+const api = (u, body) => fetch(u, body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {})
+  .then(r => r.json()).catch(() => ({error: "Le Studio ne répond pas : relance bin/monteur studio dans le terminal"}));
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 const ago = ts => { if (!ts) return "—"; const d = Date.now() / 1000 - ts;
   return d < 60 ? "à l'instant" : d < 3600 ? `il y a ${Math.round(d / 60)} min` : d < 86400 ? `il y a ${Math.round(d / 3600)} h` : `il y a ${Math.round(d / 86400)} jours`; };
@@ -239,7 +240,7 @@ async function route() {
     $("#rst2").onclick = restartServer;
   }
 }
-const API_VERSION = 3;
+const API_VERSION = 4;
 async function checkServer() {
   let st; try { st = await api("/api/state"); } catch (e) { return; }
   const old = (st.api || 0) < API_VERSION || st.outdated;
@@ -252,12 +253,16 @@ async function checkServer() {
   $("header").after(bar); $("#rst").onclick = restartServer;
 }
 async function restartServer() {
-  const r = await api("/api/restart", {}).catch(() => ({error: "Studio ancien : Ctrl+C dans le terminal, puis bin/monteur studio"}));
+  const before = (await api("/api/state")).boot;
+  const r = await api("/api/restart", {});
   if (r.error) return toast(r.error === "introuvable" ? "Ce Studio est trop ancien pour se relancer seul : Ctrl+C dans le terminal, puis bin/monteur studio" : r.error);
   toast("Redémarrage du Studio…");
-  for (let i = 0; i < 40; i++) { await new Promise(ok => setTimeout(ok, 500));
-    try { const st = await fetch("/api/state").then(x => x.json()); if (st.api >= API_VERSION) return location.reload(); } catch (e) {} }
-  toast("Le Studio ne répond pas : relance bin/monteur studio dans le terminal");
+  for (let i = 0; i < 60; i++) {  // on attend le NOUVEAU Studio (identifiant de démarrage différent)
+    await new Promise(ok => setTimeout(ok, 500));
+    try { const st = await fetch("/api/state", {cache: "no-store"}).then(x => x.json());
+      if (st.boot && st.boot !== before && st.api >= API_VERSION) { toast("Studio redémarré ✓"); return setTimeout(() => location.reload(), 400); } } catch (e) {}
+  }
+  toast("Le Studio ne répond pas : Ctrl+C dans le terminal, puis bin/monteur studio");
 }
 window.addEventListener("hashchange", route);
 $("#refresh").onclick = () => { route(); toast("Actualisé"); };
@@ -268,6 +273,7 @@ const F = {q: "", fam: "", type: "", fmt: "", st: "", sort: "mod", stale: false,
 async function vProjets() {
   const t0 = performance.now();
   const data = await api("/api/projects");
+  if (data.error || !data.stats) throw new Error(data.error || "réponse du Studio incomplète");
   STATE.projects = data.projects;
   const s = data.stats, ms = Math.round(performance.now() - t0);
   const opts = (k, label) => `<select data-f="${k}"><option value="">${label}</option>${[...new Set(data.projects.map(p => p[k]))].map(v => `<option ${F[k === "family" ? "fam" : k === "status" ? "st" : k === "format" ? "fmt" : k] === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`;

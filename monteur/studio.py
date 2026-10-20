@@ -19,7 +19,7 @@ LIB = ROOT / "library"
 VIDEO_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v"}
 ACTIONS = {"affiner", "prep", "render", "broll", "cut", "plan", "style", "charte", "doctor", "transcribe", "verif", "carte", "projet"}
 JOBS = {}
-API = 3  # à incrémenter quand ui/index.html attend de nouveaux champs : la page détecte un Studio pas redémarré
+API = 4  # à incrémenter quand ui/index.html attend de nouveaux champs : la page détecte un Studio pas redémarré
 
 
 def code_stamp():
@@ -27,6 +27,7 @@ def code_stamp():
 
 
 STARTED_CODE = code_stamp()
+BOOT = uuid.uuid4().hex[:8]  # change à chaque (re)démarrage : la page sait quand le nouveau Studio répond
 ACTIVITY = UI / "activity.json"
 _lock = threading.Lock()
 
@@ -168,7 +169,14 @@ class Handler(BaseHTTPRequestHandler):
         out = []
         for v in self.videos():
             ws = Workspace(v)
-            i = info(ws)
+            try:
+                i = info(ws)
+            except Exception as e:  # un projet abîmé ne doit pas vider toute la liste
+                log(f"⚠️  Projet {v.name} illisible : {type(e).__name__}: {e}")
+                i = {"title": v.stem, "slug": v.stem, "video": v.name, "style": "?", "family": "?", "type": "?",
+                     "format": "?", "status": "brut", "stale": False, "renders": [], "last": None, "deliverables": 0,
+                     "feedback": {"total": 0, "open": 0}, "modified": int(v.stat().st_mtime), "disk": 0,
+                     "error": f"{type(e).__name__}: {e}"}
             i["thumb"] = f"/api/thumb?video={v.name}&t={i['last']['mtime'] if i['last'] else 0}"
             out.append(i)
         return out
@@ -224,7 +232,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_file((ASSETS / "fonts" / Path(unquote(u.path)).name).resolve())
             if u.path == "/api/state":
                 vids = self.videos()
-                return self.send(200, {"root": str(self.root), "theme": theme_name(), "count": len(vids), "api": API,
+                return self.send(200, {"root": str(self.root), "theme": theme_name(), "count": len(vids), "api": API, "boot": BOOT,
                                        "outdated": code_stamp() > STARTED_CODE + 1,
                                        "themes": sorted(p.stem for p in (UI / "themes").glob("*.json"))})
             if u.path == "/api/projects":
@@ -453,27 +461,50 @@ def close_stale_jobs():
 
 
 def restart(srv):
-    """Arrête la boucle HTTP ; serve() relance ensuite le Studio avec le code à jour (même port, mêmes options)."""
+    """Arrête la boucle HTTP ; serve() recharge ensuite le code à jour dans le même processus."""
     time.sleep(0.3)
     srv.restart = True
     srv.shutdown()
 
 
+def reload_code():
+    """Recharge tous les modules monteur.* (après un git pull) : même processus, même console, même port.
+    Pas de nouveau processus à lancer — sous Windows / Git Bash, le relancer échouait (« le Studio ne répond pas »)."""
+    import importlib
+    mods = [m for n, m in list(sys.modules.items()) if m and (n == "monteur" or n.startswith("monteur."))]
+    mods.sort(key=lambda m: (m.__name__ != "monteur.common", m.__name__ == "monteur.studio", m.__name__))
+    for m in mods:
+        try:
+            importlib.reload(m)
+        except Exception as e:  # un module cassé ne doit pas empêcher le Studio de revenir
+            log(f"⚠️  Rechargement de {m.__name__} impossible : {type(e).__name__}: {e}")
+    return sys.modules["monteur.studio"]
+
+
+def _bind(port):
+    for k in range(20):  # le port peut rester occupé une fraction de seconde après la fermeture
+        try:
+            return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+        except OSError:
+            if k == 19:
+                raise SystemExit(f"Le port {port} est déjà utilisé : un autre Studio tourne ? "
+                                 f"Ferme-le, ou lance : bin/monteur studio --port {port + 1}")
+            time.sleep(0.25)
+
+
 def serve(port=8765, root="."):
     close_stale_jobs()
     Handler.root = Path(root).resolve()
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    srv = _bind(port)
     log(f"MonteurOS Studio → http://127.0.0.1:{port}  (rushs : {Handler.root})")
     srv.restart = False
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
         pass
+    srv.server_close()
     if srv.restart:
-        srv.server_close()
-        log("Code mis à jour : redémarrage du Studio…")
-        cmd = [sys.executable, "-m", "monteur", *sys.argv[1:]]
-        if os.name == "nt":  # execv Windows coupe les chemins avec espaces : on relance puis on quitte
-            subprocess.Popen(cmd)
-            os._exit(0)
-        os.execv(sys.executable, cmd)
+        log("Code mis à jour : rechargement du Studio…")
+        new = reload_code()
+        new.JOBS.update(JOBS)  # les tâches en cours restent suivies
+        return new.serve(port, root)
