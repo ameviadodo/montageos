@@ -1,7 +1,7 @@
 # Tuto vidéo « Prise en main de MonteurOS Studio »
 
-Vidéo d'environ 2 min 30 : intro, puis captation réelle du Studio avec un bandeau d'explications, outro et écran « Pour commencer ».
-Elle couvre 6 étapes : Projets · Le projet (draft + vérif) · Retours frame par frame · Studio (timeline et cartes) · Bibliothèques · Activité.
+Vidéo d'environ 3 min 30 : intro, puis captation réelle du Studio avec un bandeau d'explications, outro et écran « Pour commencer ».
+Elle couvre 8 étapes : Projets · Le projet (draft + vérif) · Retours frame par frame · Studio (timeline, recherche de cartes) · Cuts entre les plans · Bibliothèques (ratios, chartes, cartes) · Cloner un style viral (affinage, activation) · Activité.
 
 **Avec une voix neuronale (Internet requis)**, à partir du kit (captation, repères, intro, outro) :
 ```bash
@@ -11,7 +11,8 @@ bash docs/tuto/faire-tuto.sh <dossier_du_kit> [fr-FR-DeniseNeural|fr-FR-HenriNeu
 Pour la régénérer après une évolution de l'interface :
 ```bash
 bin/monteur studio --root <dossier_de_démo> --port 8770 &
-PLAYWRIGHT=$(npm root -g)/playwright node docs/tuto/record.js http://127.0.0.1:8770 <dossier_tuto>/rec
+PLAYWRIGHT=$(npm root -g)/playwright node docs/tuto/record.js http://127.0.0.1:8770 <dossier_tuto>/rec <vidéo_de_référence.mp4>
+# la vidéo de référence (un MP4 monté) sert à l'étape « Cloner un style viral » ; sans elle, l'étape montre un style existant
 # intro / outro : cartes section.stage et citation.surligne (voir compose.py, attendu dans <dossier_tuto>/tuto.monteur/assets/motion/)
 "$(. bin/_env.sh; echo "${MONTEUR_PY[0]}")" docs/tuto/compose.py <dossier_tuto>      # → <dossier_tuto>/MonteurOS-tuto.mp4
 ```

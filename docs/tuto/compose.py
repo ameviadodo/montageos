@@ -35,17 +35,26 @@ STEPS = [
     ("retours", 13, "03 · RETOURS FRAME PAR FRAME", "Écris ton retour et appuie sur Entrée. Clique un retour pour revenir à sa frame."),
     ("retours", 23, "03 · RETOURS FRAME PAR FRAME", "« Envoyer au montage » : Claude applique tes retours au prochain rendu."),
     ("studio", 0, "04 · STUDIO", "Le texte transcrit défile avec la vidéo ; la timeline montre coupes, sous-titres, sons, B-roll, zooms, cartes."),
-    ("studio", 10, "04 · STUDIO", "Choisis une carte animée, règle ses textes, puis « Aperçu »."),
+    ("studio", 10, "04 · STUDIO", "Cherche une carte animée (« chiffre », « prix », « avis »…), règle ses textes, puis « Aperçu »."),
     ("apercu", 0, "04 · STUDIO", "Si elle te plaît : « Poser à la tête de lecture » l'ajoute au montage."),
-    ("biblio", 0, "05 · BIBLIOTHÈQUES", "Formats de reel, ta charte graphique et les styles de référence."),
-    ("style", 0, "05 · BIBLIOTHÈQUES", "Chaque style regroupe ses cartes animées : « Voir en grand » pour les prévisualiser."),
-    ("activite", 0, "06 · ACTIVITÉ", "L'historique de tout ce qui a été lancé : préparations, rendus, vérifications."),
+    ("cuts", 0, "05 · CUTS ENTRE LES PLANS", "Cut sec, zoom cut, flash, passage au noir, whip, glitch, fondu… ou « Mix dynamique »."),
+    ("cuts", 5, "05 · CUTS ENTRE LES PLANS", "« Appliquer » : chaque raccord apparaît sur la piste CUT, avec son bruitage."),
+    ("biblio", 0, "06 · BIBLIOTHÈQUES", "Formats de reel, ta charte graphique, les styles de référence et les cartes animées."),
+    ("ratios", 0, "06 · BIBLIOTHÈQUES", "Tous les formats : 9:16, 16:9, 1:1, 4:5, 3:4, 2:3, 21:9 — un clic filtre la bibliothèque."),
+    ("charte", 0, "06 · BIBLIOTHÈQUES", "Ajoute une charte depuis un lien vidéo ou un petit extrait MP4."),
+    ("cartes", 1, "06 · BIBLIOTHÈQUES", "Recherche parmi 22 cartes : prix, avis, comparatif, compte à rebours, sondage, classement…"),
+    ("clone", 0, "07 · CLONER UN STYLE VIRAL", "Colle les liens des vidéos qui cartonnent (YouTube, TikTok, Instagram) ou dépose un MP4."),
+    ("clone", 12, "07 · CLONER UN STYLE VIRAL", "MonteurOS mesure le rythme, les vrais cuts, les zooms, la place et la couleur des sous-titres."),
+    ("affinage", 0, "07 · CLONER UN STYLE VIRAL", "Le style est rangé dans la bibliothèque, avec son rapport d'affinage et ses planches."),
+    ("activer", 0, "07 · CLONER UN STYLE VIRAL", "« Activer » : tous tes nouveaux projets utilisent ce style."),
+    ("style", 0, "06 · BIBLIOTHÈQUES", "Chaque style regroupe ses cartes animées : « Voir en grand » pour les prévisualiser."),
+    ("activite", 0, "08 · ACTIVITÉ", "L'historique de tout ce qui a été lancé : préparations, rendus, copies de style."),
 ]
 
 
 # Voix off : (repère, décalage s, texte dit). Repères : intro, outro, fin, ou un id de marks.json.
 VOICE = [
-    ("intro", 0.6, "Bienvenue dans MonteurOS. Voici comment l'utiliser, en six étapes."),
+    ("intro", 0.6, "Bienvenue dans MonteurOS. Voici comment l'utiliser, en huit étapes."),
     ("projets", 1.2, "Étape un : les projets. En haut, tu retrouves tes compteurs : projets, rendus, rendus périmés "
                      "et espace disque. Cherche, filtre, puis ouvre un projet d'un simple clic."),
     ("projet", 0.4, "Étape deux : le projet. Chaque rendu est une version, et la vérification s'affiche à droite."),
@@ -57,11 +66,20 @@ VOICE = [
     ("retours", 23, "Quand c'est prêt, envoie au montage : Claude appliquera tes retours."),
     ("studio", 0.5, "Étape quatre : le studio. Le texte transcrit défile avec la vidéo, et la timeline montre "
                     "les coupes, les sous-titres, les sons, les illustrations, les zooms et les cartes."),
-    ("studio", 13.5, "Choisis une carte animée, et règle son texte."),
-    ("apercu", 0.4, "Un aperçu, puis tu la poses à la tête de lecture."),
-    ("biblio", 0.4, "Étape cinq : les bibliothèques. Formats de reel, charte graphique, et styles de référence."),
-    ("style", 0.6, "Chaque style regroupe ses cartes animées, que tu peux voir en grand."),
-    ("activite", 0.3, "Étape six : l'activité. L'historique de tout ce qui a été lancé."),
+    ("studio", 13.5, "Cherche une carte animée par mot-clé, puis règle son texte."),
+    ("apercu", 0.4, "Un aperçu, et tu la poses à la tête de lecture."),
+    ("cuts", 0.3, "Étape cinq : les cuts. Zoom cut, flash, whip, glitch… Le mix les alterne, sur la piste cut."),
+    ("biblio", 0.2, "Étape six : les bibliothèques."),
+    ("ratios", 0.2, "Tous les formats sont là : vertical, horizontal, carré, quatre cinquièmes, et même cinéma."),
+    ("charte", 0.3, "Tu peux ajouter une charte depuis un lien vidéo ou un petit extrait."),
+    ("cartes", 1.5, "Et chercher une carte : un avis client, un prix, un comparatif ou un compte à rebours."),
+    ("clone", 0.4, "Étape sept : cloner un style viral. Colle le lien d'une vidéo qui cartonne, ou dépose un fichier, "
+                   "puis clique sur cloner le style."),
+    ("clone", 13, "MonteurOS mesure le rythme de coupe, les vrais cuts, les zooms, et la place, la taille et "
+                  "la couleur des sous-titres."),
+    ("affinage", 0.4, "Le style arrive dans ta bibliothèque, avec son rapport d'affinage."),
+    ("activer", 0.2, "Active-le, et tes nouveaux projets le suivent."),
+    ("activite", 0.6, "Étape huit : l'activité. L'historique de tout ce qui a été lancé."),
     ("outro", 0.4, "Ton rush brut, monté par Claude."),
     ("fin", 0.4, "Pour commencer : installe MonteurOS, ouvre le studio, puis dis simplement à Claude : "
                  "monte-moi cette vidéo."),
