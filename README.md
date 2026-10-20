@@ -41,6 +41,8 @@ bin/monteur studio --root ~/Videos            # interface → http://127.0.0.1:8
 ```
 
 ## Interface MonteurOS Studio
+> 🎥 Tuto vidéo de prise en main : voir [`docs/tuto/`](docs/tuto/) (script d'enregistrement et de montage inclus).
+
 Une interface web locale : liste des rushs, cartes des 6 formats, lecteur Rush/Coupé/Final, timeline (zooms, B-roll, animations), inspecteur pour retoucher le plan, copie de style et sélecteur de charte. Les couleurs, polices et coins arrondis viennent de `ui/themes/<nom>.json`.
 
 ### Inspiré d'EditingOS
