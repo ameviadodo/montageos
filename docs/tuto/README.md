@@ -3,6 +3,11 @@
 Vidéo d'environ 2 min 30 : intro, puis captation réelle du Studio avec un bandeau d'explications, outro et écran « Pour commencer ».
 Elle couvre 6 étapes : Projets · Le projet (draft + vérif) · Retours frame par frame · Studio (timeline et cartes) · Bibliothèques · Activité.
 
+**Avec une voix neuronale (Internet requis)**, à partir du kit (captation, repères, intro, outro) :
+```bash
+bash docs/tuto/faire-tuto.sh <dossier_du_kit> [fr-FR-DeniseNeural|fr-FR-HenriNeural] [edge|espeak]
+```
+
 Pour la régénérer après une évolution de l'interface :
 ```bash
 bin/monteur studio --root <dossier_de_démo> --port 8770 &

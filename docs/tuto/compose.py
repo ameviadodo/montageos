@@ -23,7 +23,7 @@ AP.add_argument("--voix")
 ARGS = AP.parse_args()
 D = Path(ARGS.dossier).resolve()
 W, H, FPS = 1920, 1080, 30
-FONTS = str(ASSETS / "fonts").replace(":", "\\:")
+FONTS = (ASSETS / "fonts").as_posix().replace(":", "\\:")  # C:\… → C\:/… pour le filtre ass
 
 # Bandeau : (repère, décalage s, chapitre, texte)
 STEPS = [
