@@ -125,7 +125,7 @@ fetch_font Fraunces.ttf "$GF/fraunces/Fraunces%5BSOFT,WONK,opsz,wght%5D.ttf"
 # 4a) Modèle Whisper préchargé (sinon téléchargé au premier « prep »)
 if [ "$WHISPER" = 1 ]; then
   WM="${MONTEUR_WHISPER_MODEL:-small}"
-  say "Préchargement du modèle Whisper « $WM » (une seule fois)…"
+  say "Préchargement du modèle Whisper « $WM » (une seule fois — taille et barre de progression ci-dessous)…"
   "$ROOT/bin/monteur" whisper --model "$WM" || say "⚠️  Modèle non téléchargé (réseau ?). Il le sera au premier « prep », ou relance : bin/monteur whisper"
 fi
 

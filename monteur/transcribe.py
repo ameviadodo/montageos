@@ -1,5 +1,13 @@
 """Transcription mot à mot (faster-whisper > openai-whisper)."""
+import os
+
 from .common import log, save_json, ffmpeg
+
+os.environ.setdefault("HF_HUB_VERBOSITY", "error")           # pas d'avertissement « HF_TOKEN » : inutile ici
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+
+TAILLES = {"tiny": "75 Mo", "base": "145 Mo", "small": "480 Mo", "medium": "1,5 Go",
+           "large-v2": "3 Go", "large-v3": "3 Go", "large": "3 Go", "turbo": "1,6 Go", "large-v3-turbo": "1,6 Go"}
 
 
 class NoWhisper(RuntimeError):
@@ -9,6 +17,7 @@ class NoWhisper(RuntimeError):
 def load_model(model="small"):
     """Charge (et télécharge au besoin) le modèle faster-whisper ; repli CPU si CUDA/cuDNN est incomplet."""
     from faster_whisper import WhisperModel
+    model = _download(model)
     try:
         return WhisperModel(model, device="auto", compute_type="auto")
     except Exception as e:
@@ -17,6 +26,35 @@ def load_model(model="small"):
             return WhisperModel(model, device="cpu", compute_type="int8")
         raise SystemExit(f"Modèle Whisper « {model} » indisponible ({type(e).__name__}: {e}). Vérifie l'accès à "
                          "huggingface.co, essaie --model base, ou indique un dossier de modèle local avec --model.")
+
+
+def _download(model):
+    """Télécharge le modèle avec une barre de progression (faster-whisper la masque) ; renvoie son dossier."""
+    if os.path.isdir(model):
+        return model
+    try:
+        import huggingface_hub
+        from faster_whisper.utils import _MODELS
+    except ImportError:
+        return model
+    repo = _MODELS.get(model)
+    if not repo:
+        return model
+    files = ["config.json", "preprocessor_config.json", "model.bin", "tokenizer.json", "vocabulary.*"]
+    try:
+        return huggingface_hub.snapshot_download(repo, allow_patterns=files, local_files_only=True)
+    except Exception:
+        pass  # pas encore en cache
+    log(f"Téléchargement du modèle Whisper « {model} » ({TAILLES.get(model, '?')}, une seule fois) depuis huggingface.co…")
+    try:
+        path = huggingface_hub.snapshot_download(repo, allow_patterns=files)
+    except Exception as e:
+        raise SystemExit(f"Téléchargement du modèle Whisper « {model} » impossible ({type(e).__name__}: {e}).\n"
+                         "Vérifie la connexion à huggingface.co (pare-feu, proxy, VPN), puis relance. "
+                         "Modèle plus léger : --model base. Ou importe une transcription : "
+                         "bin/monteur transcription <video> <fichier.srt> --prep")
+    log(f"Modèle « {model} » téléchargé → {path}")
+    return path
 
 
 def _segments(m, wav, language):
