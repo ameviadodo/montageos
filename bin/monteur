@@ -2,6 +2,12 @@
 # Lanceur MonteurOS (Linux, macOS, Windows Git Bash) : utilise le Python du venv local s'il existe.
 ROOT="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/.." && pwd)"
 . "$ROOT/bin/_env.sh"
+# Première utilisation (ex. dossier dézippé depuis GitHub) : pas de venv → installation automatique
+if ! monteur_venv_python "$ROOT" >/dev/null && [ -z "${MONTEUR_NO_AUTOSETUP:-}" ]; then
+  echo "[monteur] Aucun environnement .venv dans $ROOT : installation automatique (setup.sh)…" >&2
+  bash "$ROOT/setup.sh" >&2 || { echo "[monteur] setup.sh a échoué : relis le message ci-dessus." >&2; exit 1; }
+  . "$ROOT/bin/_env.sh"
+fi
 if [ "${#MONTEUR_PY[@]}" -eq 0 ]; then
   echo "[monteur] Aucun Python 3.9+ trouvé. Lance : bash \"$ROOT/setup.sh\"" >&2
   exit 1

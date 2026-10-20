@@ -38,6 +38,9 @@ def silent(video):
 def cmd_doctor(a):
     from . import sfx
     ok = True
+    venv = sys.prefix != sys.base_prefix
+    print(f"{'✅' if venv else '⚠️ '} Python {sys.version.split()[0]} — {sys.executable}"
+          + ("" if venv else "  (hors venv : lance bash setup.sh)"))
     for b in ("ffmpeg", "ffprobe", "node", "npx"):
         print(f"{'✅' if which(b) else '❌'} {b}")
         ok &= which(b) or b in ("node", "npx")
@@ -65,7 +68,17 @@ def cmd_whisper(a):
     try:
         import faster_whisper
     except ImportError:
-        raise SystemExit("faster-whisper absent du venv : lance bash setup.sh")
+        if sys.prefix == sys.base_prefix:  # pas dans un venv : on n'installe rien dans le Python système
+            raise SystemExit(f"faster-whisper introuvable, et ce Python n'est pas celui de MonteurOS ({sys.executable}).\n"
+                             "Lance d'abord : bash setup.sh   (il crée .venv et installe Whisper)")
+        log(f"faster-whisper absent du venv ({sys.executable}) : installation…")
+        import subprocess
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "faster-whisper"], check=False)
+        try:
+            import faster_whisper
+        except ImportError:
+            raise SystemExit("Installation de faster-whisper impossible avec ce Python "
+                             f"({sys.version.split()[0]}). Windows : installe Python 3.12, supprime .venv, relance bash setup.sh")
     log(f"faster-whisper {faster_whisper.__version__} — chargement du modèle « {a.model} »…")
     m = load_model(a.model)
     with tempfile.TemporaryDirectory() as d:
