@@ -187,3 +187,45 @@ class Robustesse(unittest.TestCase):
                "Conversion failed!")
         self.assertIn("No such file", ffmpeg_cause(err))
         self.assertEqual(ffmpeg_cause("ligne seule"), "ligne seule")
+
+
+class Historique(unittest.TestCase):
+    def test_annuler_restaure_plan_style_coupe_et_rendu(self):
+        from monteur import history
+        with tempfile.TemporaryDirectory() as d:
+            rush = Path(d) / "r.mp4"
+            rush.write_bytes(b"")
+            ws = Workspace(rush)
+            save_json(ws.plan, {"zooms": [1]})
+            ws.cut_video.write_bytes(b"coupe-1")
+            history.snapshot(ws, "Application du style")
+            save_json(ws.plan, {"zooms": [1, 2, 3]})          # réécrit sur place
+            save_json(ws.style, {"name": "hormozi"})          # n'existait pas avant
+            tmp = ws.dir / "cut.tmp.mp4"
+            tmp.write_bytes(b"coupe-2")
+            __import__("os").replace(tmp, ws.cut_video)       # comme render_cut
+            out = ws.dir / "renders" / "r-v01-draft.mp4"
+            out.parent.mkdir()
+            out.write_bytes(b"x")
+            history.record_render(ws, out, "Rendu draft")
+            self.assertEqual(history.undo(ws), ["Rendu draft"])
+            self.assertFalse(out.exists())
+            self.assertTrue((ws.dir / "historique" / "corbeille" / out.name).exists())
+            history.undo(ws)
+            self.assertEqual(json.loads(ws.plan.read_text()), {"zooms": [1]})
+            self.assertFalse(ws.style.exists())
+            self.assertEqual(ws.cut_video.read_bytes(), b"coupe-1")
+            self.assertEqual(history.entries(ws), [])
+
+    def test_instantane_sans_changement_de_coupe(self):
+        from monteur import history
+        with tempfile.TemporaryDirectory() as d:
+            rush = Path(d) / "r.mp4"
+            rush.write_bytes(b"")
+            ws = Workspace(rush)
+            ws.cut_video.write_bytes(b"coupe")
+            save_json(ws.plan, {"a": 1})
+            history.snapshot(ws, "x")
+            save_json(ws.plan, {"a": 2})
+            history.undo(ws)  # cut.mp4 identique (même fichier) : pas d'erreur SameFileError
+            self.assertEqual(json.loads(ws.plan.read_text()), {"a": 1})

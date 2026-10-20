@@ -33,6 +33,7 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 | `monteur/verify.py` | contrôle qualité d'un rendu (noirs, blancs, saturation, mots coupés…) |
 | `monteur/review.py` | retours frame par frame (`review/feedback.json`) |
 | `monteur/project.py` | état projet, versions `renders/`, rendus périmés, miniatures |
+| `monteur/history.py` | instantané avant chaque action, `monteur annuler` / bouton « Annuler » (Ctrl+Z) |
 | `monteur/cards.py`, `library/cards/` | cartes animées Hyperframes paramétrables |
 | `monteur/layouts.py`, `library/formats/` | formats de reel multi-ratios (Avant/après ; Split carte dans `render.py`) |
 | `monteur/studio.py`, `ui/index.html` | MonteurOS Studio : Projets · Studio · Bibliothèques · Activité |

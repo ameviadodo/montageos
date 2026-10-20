@@ -17,7 +17,7 @@ from .common import ASSETS, ROOT, STYLES, Workspace, active_style, load_json, lo
 UI = ROOT / "ui"
 LIB = ROOT / "library"
 VIDEO_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v"}
-ACTIONS = {"affiner", "prep", "render", "broll", "cut", "plan", "style", "charte", "doctor", "transcribe", "verif", "carte", "projet"}
+ACTIONS = {"affiner", "appliquer", "prep", "render", "broll", "cut", "plan", "style", "charte", "doctor", "transcribe", "verif", "carte", "projet"}
 JOBS = {}
 API = 4  # à incrémenter quand ui/index.html attend de nouveaux champs : la page détecte un Studio pas redémarré
 
@@ -215,7 +215,10 @@ class Handler(BaseHTTPRequestHandler):
                 trans = auto_transitions(ws, load_style(i["style"]), plan.get("duration"))
         except Exception:
             trans = []
-        return {**i, "dir": str(ws.dir), "plan": load_json(ws.plan), "transitions": trans, "cut_points": cut_points(ws), "edl": (load_json(ws.edl) or {}).get("stats"),
+        from .history import entries
+        return {**i, "dir": str(ws.dir), "plan": load_json(ws.plan), "transitions": trans, "cut_points": cut_points(ws),
+                "history": list(reversed(entries(ws)))[:15],
+                "plan_style": plan.get("style") or (i["style"] if plan else None),  # plans d'avant : style du projet "edl": (load_json(ws.edl) or {}).get("stats"),
                 "keep": (load_json(ws.edl) or {}).get("keep"), "transcript": tr, "files": files,
                 "review": review.load(ws), "verif": last_verif, "subs": subs, "sfx_events": sfx,
                 "styles": [p.stem for p in sorted(STYLES.glob("*.json"))]}
@@ -320,18 +323,36 @@ class Handler(BaseHTTPRequestHandler):
         name = slug(q.get("name") or "import")
         base = (STYLES / "refs" / name) if q.get("kind") == "style" else (UI / "themes" / name)
         fname = Path(unquote(q.get("filename") or "echantillon.mp4")).name
+        if q.get("kind") == "rush":  # nouveau rush choisi sur l'ordinateur → dossier des projets
+            if Path(fname).suffix.lower() not in VIDEO_EXT:
+                return self.send(400, {"error": f"pas une vidéo : {fname}"})
+            dest, k = self.root / fname, 1
+            while dest.exists():
+                dest, k = self.root / f"{Path(fname).stem}-{k}{Path(fname).suffix}", k + 1
+            self._receive(dest, 100 << 30)
+            log_activity({"id": uuid.uuid4().hex[:8], "label": "Vidéo ajoutée", "video": dest.name, "status": "done",
+                          "started": int(time.time()), "tail": [f"{dest.stat().st_size >> 20} Mo"]})
+            return self.send(200, {"path": str(dest), "video": dest.name, "size": dest.stat().st_size})
         if Path(fname).suffix.lower() not in VIDEO_EXT | {".png", ".jpg", ".jpeg", ".webp"}:
             return self.send(400, {"error": f"format non pris en charge : {fname}"})
         dest = base / "uploads" / fname
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        left = int(self.headers.get("Content-Length", 0))
-        if left > 2 << 30:
+        if int(self.headers.get("Content-Length", 0)) > 2 << 30:
             return self.send(413, {"error": "fichier > 2 Go : coupe un extrait de 10 à 60 s"})
-        with open(dest, "wb") as f:
+        self._receive(dest, 2 << 30)
+        return self.send(200, {"path": str(dest), "name": name, "size": dest.stat().st_size})
+
+    def _receive(self, dest, limit):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        left = min(int(self.headers.get("Content-Length", 0)), limit)
+        tmp = dest.with_name(dest.name + ".part")
+        with open(tmp, "wb") as f:
             while left > 0 and (chunk := self.rfile.read(min(1 << 20, left))):
                 f.write(chunk)
                 left -= len(chunk)
-        return self.send(200, {"path": str(dest), "name": name, "size": dest.stat().st_size})
+        if left > 0:
+            tmp.unlink(missing_ok=True)
+            raise RuntimeError("envoi interrompu")
+        os.replace(tmp, dest)
 
     def do_POST(self):
         u = urlparse(self.path)
@@ -343,7 +364,11 @@ class Handler(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         try:
             if u.path == "/api/plan":
-                save_json(Workspace(self.video_path(body["video"])).plan, body["plan"])
+                from .history import snapshot
+                ws = Workspace(self.video_path(body["video"]))
+                if load_json(ws.plan) != body["plan"]:  # un instantané seulement si quelque chose change
+                    snapshot(ws, body.get("label") or "Plan modifié dans le Studio")
+                save_json(ws.plan, body["plan"])
                 return self.send(200, {"ok": True})
             if u.path == "/api/theme":
                 set_setting(theme=body["theme"])
@@ -359,6 +384,8 @@ class Handler(BaseHTTPRequestHandler):
                 ws = Workspace(self.video_path(body["video"]))
                 if body["kind"] not in KINDS:
                     return self.send(400, {"error": "type de cut inconnu"})
+                from .history import snapshot
+                snapshot(ws, f"Cuts : {body['kind']}")
                 style = load_style(load_json(ws.style, {}).get("name") or active_style())
                 style["cut"].update(transition=body["kind"], transition_every=int(body.get("every", 1)))
                 plan = load_json(ws.plan) or {}
@@ -385,8 +412,10 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(400, {"error": "action inconnue"})
                 return self.send(200, {**data, "text": review.as_text(ws)})
             if u.path == "/api/transcript":
+                from .history import snapshot
                 from .transcript_import import import_transcript
                 ws = Workspace(self.video_path(body["video"]))
+                snapshot(ws, "Import de transcription")
                 dest = ws.dir / "import" / Path(body["name"]).name
                 dest.parent.mkdir(exist_ok=True)
                 dest.write_text(body["content"], encoding="utf-8")
@@ -396,6 +425,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, {"words": len(data["words"])})
             if u.path == "/api/run":
                 return self.run_action(body)
+            if u.path == "/api/undo":
+                from .history import entries, undo
+                if any(j["status"] == "running" and j.get("video") == body["video"] for j in JOBS.values()):
+                    return self.send(409, {"error": "une action est en cours sur ce projet : attends la fin pour annuler"})
+                ws = Workspace(self.video_path(body["video"]))
+                done = undo(ws, body.get("n"))
+                log_activity({"id": uuid.uuid4().hex[:8], "label": "Annulation", "video": body["video"], "status": "done",
+                              "started": int(time.time()), "tail": [f"↶ {x}" for x in done]})
+                return self.send(200, {"undone": done, "history": list(reversed(entries(ws)))[:15]})
             if u.path == "/api/restart":
                 if any(j["status"] == "running" for j in JOBS.values()):
                     return self.send(409, {"error": "une tâche est en cours : attends la fin avant de redémarrer"})
@@ -410,7 +448,7 @@ class Handler(BaseHTTPRequestHandler):
         act = body["action"]
         if act not in ACTIONS:
             return self.send(400, {"error": f"action interdite : {act}"})
-        labels = {"affiner": "Affinage du style", "prep": "Préparation", "render": "Rendu master", "broll": "Recherche B-roll", "verif": "Vérification",
+        labels = {"affiner": "Affinage du style", "appliquer": "Application du style", "prep": "Préparation", "render": "Rendu master", "broll": "Recherche B-roll", "verif": "Vérification",
                   "style": "Copie de style", "charte": "Extraction de charte", "carte": "Carte animée",
                   "projet": "Mise à jour projet", "doctor": "Diagnostic"}
         label = labels.get(act, act)
@@ -430,7 +468,7 @@ class Handler(BaseHTTPRequestHandler):
                 args.append("--activer")
         elif act != "doctor":
             args.append(str(self.video_path(body["video"])))
-            if body.get("style") and act not in ("verif", "projet"):
+            if body.get("style") and act not in ("verif", "projet"):  # appliquer : le style choisi devient celui du projet
                 args += ["--style", body["style"]]
             if body.get("aspect") and body["aspect"] != "source" and act not in ("verif", "projet", "carte"):
                 args += ["--aspect", body["aspect"]]
