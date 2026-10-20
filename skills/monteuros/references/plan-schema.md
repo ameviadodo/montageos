@@ -23,6 +23,8 @@ Toutes les durées sont en secondes **sur la timeline coupée** (`cut.mp4`).
     {"start": 40, "end": 46, "type": "hyperframes", "name": "graph", "file": "…/graph.mov", "layout": "overlay|full|panel"},
     {"start": 50, "end": 52, "type": "chapter", "number": "02", "text": "L'installer chez toi"}
   ],
+  "transitions": [{"t": 3.42, "kind": "flash"}, {"t": 7.9, "kind": "whip", "sfx": null}],
+                     // raccords sur les coupes : hard|zoomcut|flash|dip|whip|glitch|fondu (absent = déduit de style.cut.transition)
   "sfx": [{"t": 30.0, "name": "ding", "gain": 0.4}],   // en plus des bruitages automatiques
   "emphasis": [12, 57],                                  // indices de mots (transcript_cut)
   "emphasis_words": ["ventes", "gratuit", "30"],         // ou par texte (insensible à la casse)
@@ -33,4 +35,4 @@ Toutes les durées sont en secondes **sur la timeline coupée** (`cut.mp4`).
 - `file` à `null` = à trouver (`monteur broll`) ou à générer (IA puis `monteur attach`).
 - `layout: "pip"` = incrustation en haut à droite ; `full` = plein écran (la voix continue) — en format Split carte, `full` va dans le panneau du haut ; `fullscreen` force le plein cadre.
 - `hide_subs: true` masque les sous-titres pendant un B-roll très chargé.
-- Les bruitages automatiques découlent de `style.sfx` (`on_zoom`, `on_broll`, `on_motion`).
+- Les bruitages automatiques découlent de `style.sfx` (`on_zoom`, `on_broll`, `on_motion`, `on_transition`).

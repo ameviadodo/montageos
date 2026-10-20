@@ -4,6 +4,7 @@ nom: Split carte
 etat: Exemple
 squelette: scaffold
 style: split-carte
+ratios: 9:16, 4:5, 16:9
 description: Moi en bas, tête détourée, je parle, et au-dessus il y a des animations.
 ---
 # Format 01 — Split carte
@@ -20,3 +21,8 @@ bin/monteur carte RUSH.mp4 ecran.rail --start 3.2 --set title="Les 3 étapes" --
 bin/monteur render RUSH.mp4 --draft && bin/monteur verif RUSH.mp4
 ```
 **Mesures** : panneau `format.split` 0.38–0.45 ; une carte toutes les 4–6 s ; jamais le panneau vide plus de 3 s.
+
+## Autres ratios
+- **4:5** (feed Instagram) : même structure, panneau ≈ 40 %.
+- **16:9** (YouTube) : l'orateur passe à **gauche**, le panneau d'animations à **droite** (42 % de la largeur) —
+  automatique dès que le format est paysage : `bin/monteur render RUSH.mp4 --style split-carte --aspect 16:9`.

@@ -60,7 +60,29 @@ def build_theme(cols, name, shots):
     }
 
 
-def extract(sources, name):
+def video_style(theme):
+    """styles/<nom>.json aligné sur la charte (accents des sous-titres et animations), créé s'il n'existe pas."""
+    from .common import STYLES
+    path = STYLES / f"{theme['name']}.json"
+    if path.exists():
+        return path
+    c = theme["colors"]
+    save_json(path, {
+        "name": theme["name"], "description": f"Identité vidéo de la charte « {theme['name']} ».",
+        "library": {"etat": "Charte", "palette": [c["bg"], c["text"], c["accent"], c["accent2"]],
+                    "fonts": theme.get("fonts", {}),
+                    "cards": ["titre.barre", "medaillon.nom", "surlignage.liste", "stat.courbe", "citation.surligne"]},
+        "subtitles": {"highlight": c["accent"], "emphasis": c["accent2"]},
+        "motion": {"accent": c["accent"]},
+        "format": {"panel_color": c["bg"]},
+    })
+    log(f"Style vidéo assorti → styles/{theme['name']}.json")
+    return path
+
+
+def extract(sources, name, with_style=True):
+    from .style_clone import slug
+    name = slug(name)
     THEMES.mkdir(parents=True, exist_ok=True)
     shots_dir = THEMES / name
     shots_dir.mkdir(exist_ok=True)
@@ -85,4 +107,6 @@ def extract(sources, name):
         theme = {**theme, **{k: old[k] for k in ("colors", "fonts", "radius", "layout_notes") if k in old}}
     save_json(THEMES / f"{name}.json", theme)
     log(f"Charte « {name} » → ui/themes/{name}.json ({len(shots)} captures à vérifier)")
+    if with_style:
+        video_style(theme)
     return theme

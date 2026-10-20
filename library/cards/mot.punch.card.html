@@ -1,0 +1,17 @@
+<!--meta {"label":"Mot-clé punch","category":"Titres","mode":"overlay","duration":1.6,
+"vars":{"word":"GRATUIT","sub":""},"tags":["hormozi","mot","impact","accroche","pub"],
+"usage":"Un mot énorme claque au centre (échelle 1.6 → 1, secousse), façon Hormozi / MrBeast."}-->
+<style>
+.w{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);font-weight:900;font-size:calc(var(--u)*15);letter-spacing:-.01em;
+ color:var(--accent);text-transform:uppercase;white-space:nowrap;-webkit-text-stroke:calc(var(--u)*.5) #000;paint-order:stroke fill;
+ text-shadow:0 calc(var(--u)*.8) 0 #000}
+.s{position:absolute;left:50%;top:62%;transform:translateX(-50%);font-weight:800;font-size:calc(var(--u)*3.6);white-space:nowrap;
+ -webkit-text-stroke:calc(var(--u)*.25) #000;paint-order:stroke fill}
+</style>
+<template><div class="w">{{word}}</div><div class="s">{{sub}}</div></template>
+<script>
+tl.from(".w", { scale: 1.6, opacity: 0, duration: .22, ease: "back.out(2)" }, 0)
+  .to(".w", { x: "+=8", yoyo: true, repeat: 3, duration: .04 }, .22)
+  .from(".s", { y: 20, opacity: 0, duration: .25 }, .2)
+  .to([".w", ".s"], { scale: .9, opacity: 0, duration: .2 }, V.DUR - .2);
+</script>

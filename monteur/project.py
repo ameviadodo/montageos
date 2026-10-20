@@ -25,7 +25,8 @@ def renders(ws):
 
 def info(ws):
     meta = load_json(meta_path(ws), {})
-    style = load_json(ws.style, {}).get("name") or "default"
+    from .common import active_style
+    style = load_json(ws.style, {}).get("name") or active_style() or "default"
     rs = renders(ws)
     last = rs[-1] if rs else None
     edits = [p.stat().st_mtime for p in (ws.plan, ws.source, ws.dir / "style.json") if p.exists()]

@@ -1,0 +1,15 @@
+<!--meta {"label":"Volet de transition","category":"Transitions","mode":"overlay","duration":0.8,
+"vars":{"color":"#FFD935","dir":"left"},"tags":["transition","cut","volet","wipe","raccord","changement de partie"],
+"usage":"Un volet de couleur balaie l'écran et masque le raccord : pose-le centré sur une coupe (start = coupe − 0,4 s)."}-->
+<style>
+.v1,.v2{position:absolute;inset:0;transform-origin:left}
+.v1{background:{{color}}}.v2{background:#0B0F1A}
+</style>
+<template><div class="v2"></div><div class="v1"></div></template>
+<script>
+const from = V.dir === "right" ? "right" : "left", to = from === "left" ? "right" : "left";
+gsap.set([".v1", ".v2"], { transformOrigin: from, scaleX: 0 });
+tl.to(".v1", { scaleX: 1, duration: .28, ease: "power3.in" }, 0).to(".v2", { scaleX: 1, duration: .28, ease: "power3.in" }, .06)
+  .set([".v1", ".v2"], { transformOrigin: to }, .4)
+  .to(".v2", { scaleX: 0, duration: .3, ease: "power3.out" }, .4).to(".v1", { scaleX: 0, duration: .3, ease: "power3.out" }, .46);
+</script>

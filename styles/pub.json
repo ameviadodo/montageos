@@ -1,12 +1,14 @@
 {
-  "name": "pub", "mode": "pub",
+  "name": "pub",
+  "mode": "pub",
   "description": "Publicité / ads Meta-TikTok : hook en 1,5 s, structure Problème → Solution → Preuve → CTA, rythme très serré.",
   "format": {"aspect": "9:16"},
-  "cut": {"min_silence": 0.22, "padding": 0.04},
+  "cut": {"min_silence": 0.22, "padding": 0.04, "transition": "mix"},
   "zoom": {"every_s": 2.5, "scale": 1.14, "pulse_scale": 1.2, "pattern": ["punch", "pulse", "punch"]},
   "subtitles": {"font": "Montserrat Black", "size": 0.072, "max_words": 2, "highlight": "#FFE600", "emphasis": "#FF3B30", "position": "center", "margin_v": 0.33},
   "broll": {"per_minute": 9, "duration": 1.4, "layout": "full"},
   "motion": {"hook_title": true, "accent": "#FFE600", "cta": {"text": "COMMANDE MAINTENANT", "subtext": "Lien dans la bio", "duration": 2.8}},
   "look": {"eq": "contrast=1.06:saturation=1.15"},
-  "sfx": {"volume": 0.45}
+  "sfx": {"volume": 0.45},
+  "library": {"etat": "Prêt", "cards": ["mot.punch", "prix.promo", "avis.etoiles", "titre.barre", "transition.volet"], "ratios": ["9:16", "4:5", "1:1", "16:9"]}
 }

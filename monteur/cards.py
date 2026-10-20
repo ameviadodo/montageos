@@ -28,6 +28,25 @@ def catalog():
             for p in sorted(CARDS.glob("*.card.html"))]
 
 
+def _norm(text):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", str(text).lower()) if unicodedata.category(c) != "Mn")
+
+
+def search(query=None, category=None):
+    """Cartes dont l'id, le nom, la catégorie, l'usage, les tags ou les variables contiennent tous les mots cherchés."""
+    words = _norm(query or "").split()
+    out = []
+    for c in catalog():
+        if category and _norm(c.get("category")) != _norm(category):
+            continue
+        hay = _norm(" ".join([c["id"], c.get("label", ""), c.get("category", ""), c.get("usage", ""),
+                              " ".join(c.get("tags", [])), " ".join(f"{k} {v}" for k, v in c.get("vars", {}).items())]))
+        if all(w in hay for w in words):
+            out.append(c)
+    return out
+
+
 def _fill(text, values):
     return re.sub(r"\{\{(\w+)(?:\|([^}]*))?\}\}", lambda m: str(values.get(m.group(1), m.group(2) or "")), text)
 

@@ -1,0 +1,17 @@
+<!--meta {"label":"Lieu + date (machine à écrire)","category":"Documentaire","mode":"overlay","duration":4,
+"vars":{"place":"PARIS, FRANCE","date":"12 MARS 1998"},"tags":["documentaire","lieu","date","archive","reportage","sobre"],
+"usage":"Lieu et date tapés lettre à lettre en bas à gauche, avec curseur : le carton de situation des documentaires."}-->
+<style>
+.ld{position:absolute;left:6%;bottom:10%;font-family:"Space Mono",monospace;text-transform:uppercase;letter-spacing:.14em;
+ text-shadow:0 2px 12px rgba(0,0,0,.8)}
+.ld .p{font-weight:700;font-size:calc(var(--u)*3.2)}
+.ld .d{font-size:calc(var(--u)*2.2);color:var(--accent);margin-top:calc(var(--u)*.8)}
+.cur{display:inline-block;width:.6em;height:1em;background:currentColor;vertical-align:-.12em;margin-left:.1em}
+</style>
+<template><div class="ld"><div class="p"><span id="p"></span><span class="cur" id="c1"></span></div><div class="d"><span id="d"></span></div></div></template>
+<script>
+const type = (el, txt, at, step = .06) => [...txt].forEach((ch, i) => tl.call(() => el.textContent = txt.slice(0, i + 1), null, at + i * step));
+type(document.getElementById("p"), V.place, .2);
+type(document.getElementById("d"), V.date, .3 + V.place.length * .06, .05);
+tl.to("#c1", { opacity: 0, repeat: 9, yoyo: true, duration: .2 }, 0).to(".ld", { opacity: 0, duration: .5 }, V.DUR - .5);
+</script>

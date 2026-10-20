@@ -65,6 +65,22 @@ bin/monteur avant-apres transforme.mp4 original.mp4 --title "Avant / après" --o
 bin/monteur prep rush.mp4 --style split-carte       # format Split carte
 ```
 
+### Bibliothèque : styles viraux, formats, chartes, cuts
+- **Cloner un style qui cartonne** : Studio → Bibliothèques → Références → liens YouTube/TikTok/Instagram ou MP4 →
+  « Cloner le style » ; le style est rangé (état *Copié*) et peut être **activé** pour tous les nouveaux projets.
+- **Tous les formats** : 9:16, 16:9, 1:1, 4:5, 3:4, 2:3, 21:9 — filtre *Format* dans la bibliothèque, `--aspect` partout.
+- **Nouvelles chartes** depuis un lien vidéo ou un petit extrait MP4 → thème du Studio + style vidéo assorti.
+- **Recherche de cartes** animées (17 cartes : prix promo, avis étoiles, mot punch, intro logo, lieu/date, volet…).
+- **Types de cut** entre les plans : zoom cut, flash, passage au noir, whip, glitch, fondu, mix.
+
+```bash
+bin/monteur style "https://youtu.be/XXXX" --name viral --activer   # clone + active
+bin/monteur styles                                                  # bibliothèque (● = actif)
+bin/monteur charte "https://youtu.be/YYYY" extrait.mp4 --name ma-marque
+bin/monteur cartes --cherche prix
+bin/monteur render rush.mp4 --aspect 4:5 --cuts mix --draft
+```
+
 ## Architecture
 - `skills/` : 13 skills Claude (un chef d'orchestre et 12 métiers). Le dossier sert aussi de plugin (`.claude-plugin/`) et de skills de projet (`.claude/skills`).
 - `claude-projects/` : 4 projets claude.ai (directeur artistique, scripts pub/UGC, prompts studio IA, analyste de style).

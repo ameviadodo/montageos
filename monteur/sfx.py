@@ -86,6 +86,9 @@ def auto_events(plan, style):
         name = m.get("sfx", c.get("on_motion") if m.get("type") == "title" else None)
         if name:
             ev.append({"t": m["start"] - (0.9 if name == "riser" else 0), "name": name})
+    if plan.get("transitions"):
+        from .transitions import sfx_events
+        ev += sfx_events(plan["transitions"], c)
     ev += plan.get("sfx", [])
     out = []
     for e in sorted(ev, key=lambda e: e["t"]):

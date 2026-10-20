@@ -1,40 +1,8 @@
 {
   "name": "data-desk",
   "description": "Desk data : chiffres plein cadre, courbes qui se tracent, compteurs, sobriété financière.",
-  "zoom": {
-    "every_s": 8,
-    "pattern": [
-      "ease",
-      "punch"
-    ]
-  },
-  "subtitles": {
-    "font": "Montserrat ExtraBold",
-    "uppercase": false,
-    "max_words": 5,
-    "highlight": "#3BA7FF",
-    "emphasis": "#FFB000"
-  },
-  "motion": {
-    "accent": "#FFB000"
-  },
-  "library": {
-    "etat": "Draft",
-    "palette": [
-      "#FFFFFF",
-      "#3BA7FF",
-      "#0B0F1A",
-      "#FFB000"
-    ],
-    "fonts": {
-      "display": "Archivo",
-      "body": "Archivo",
-      "mono": "IBM Plex Mono"
-    },
-    "cards": [
-      "stat.courbe",
-      "ecran.push3d",
-      "programme.chapitres"
-    ]
-  }
+  "zoom": {"every_s": 8, "pattern": ["ease", "punch"]},
+  "subtitles": {"font": "Montserrat ExtraBold", "uppercase": false, "max_words": 5, "highlight": "#3BA7FF", "emphasis": "#FFB000"},
+  "motion": {"accent": "#FFB000"},
+  "library": {"etat": "Draft", "palette": ["#FFFFFF", "#3BA7FF", "#0B0F1A", "#FFB000"], "fonts": {"display": "Archivo", "body": "Archivo", "mono": "IBM Plex Mono"}, "cards": ["stat.courbe", "ecran.push3d", "programme.chapitres"], "ratios": ["9:16", "16:9", "1:1", "4:5"]}
 }

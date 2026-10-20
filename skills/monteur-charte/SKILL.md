@@ -9,7 +9,9 @@ description: Applique une charte graphique à MonteurOS Studio (l'interface web)
 ```bash
 bin/monteur charte capture1.png capture2.png [video.mp4] ["https://youtube.com/watch?v=…"] --name editingos
 ```
-→ `ui/themes/editingos.json` (palette dominante, rôles de couleurs proposés) + captures dans `ui/themes/editingos/`. Pour une vidéo YouTube, le moment où l'interface apparaît compte : si l'utilisateur donne un horodatage, découpe d'abord : `ffmpeg -ss 03:12 -t 20 -i video.mp4 extrait.mp4`.
+Ou depuis le Studio : **Bibliothèques → Ta charte → Ajouter une charte** (liens vidéo, petits extraits MP4 ou captures déposés).
+→ `ui/themes/editingos.json` (palette dominante, rôles de couleurs proposés) + captures dans `ui/themes/editingos/`
++ style vidéo assorti `styles/editingos.json` (accents des sous-titres et animations, couleur du panneau ; `--sans-style` pour s'en passer). Pour une vidéo YouTube, le moment où l'interface apparaît compte : si l'utilisateur donne un horodatage, découpe d'abord : `ffmpeg -ss 03:12 -t 20 -i video.mp4 extrait.mp4`.
 
 ## 2. Affiner (toi, en regardant les captures avec Read)
 Dans `ui/themes/<nom>.json` :

@@ -76,7 +76,7 @@ def build_subtitles(transcript, plan, style, w, h, out):
         border, ow = 1, max(1, round(c["outline_w"] * base))
     st = (f"Style: Sub,{c['font']},{size},{ass_color(c['primary'])},{ass_color(c['highlight'])},"
           f"{ass_color(c['outline'])},{ass_color('#000000', 0x80)},-1,0,0,0,100,100,0,0,{border},"
-          f"{ow},{c['shadow']},{align},{int(w * .06)},{int(w * .06)},{mv},1")
+          f"{ow},{c['shadow']},{align},{int(w * c.get('margin_l', .06))},{int(w * c.get('margin_r', .06))},{mv},1")
     lines = header(w, h, [st])
     words = [dict(x, idx=i) for i, x in enumerate(transcript["words"])]
     emph = set(plan.get("emphasis", []))

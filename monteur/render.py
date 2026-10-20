@@ -1,11 +1,18 @@
 """Assemblage final : recadrage, zooms, B-roll, animations, sous-titres, bruitages, mixage."""
 import shutil
 
+from . import transitions as tr
 from .common import ASSETS, ffmpeg, ffmpeg_progress, load_json, log, probe
 from .sfx import auto_events
 from .subtitles import build_motion, build_subtitles
 
-ASPECTS = {"9:16": (1080, 1920), "16:9": (1920, 1080), "1:1": (1080, 1080), "4:5": (1080, 1350)}
+ASPECTS = {"9:16": (1080, 1920), "16:9": (1920, 1080), "1:1": (1080, 1080), "4:5": (1080, 1350),
+           "3:4": (1080, 1440), "2:3": (1080, 1620), "21:9": (2520, 1080)}
+
+
+def aspect_of(w, h):
+    """Ratio de la liste ASPECTS le plus proche de w×h (ex. 1080×1350 → 4:5)."""
+    return min(ASPECTS, key=lambda k: abs(ASPECTS[k][0] / ASPECTS[k][1] - w / h))
 
 
 def out_size(info, fmt):
@@ -60,13 +67,27 @@ def render(ws, style, out=None, draft=False):
     inputs, graph = ["-i", video], []
     n_in = 1
 
-    # « Split carte » : panneau d'animations en haut, orateur en bas
+    # types de cut entre les plans (plan.json « transitions », sinon déduits du style)
+    trans = plan.get("transitions")
+    if trans is None:
+        trans = tr.auto_transitions(ws, style, dur)
+    plan = {**plan, "transitions": trans}
+
+    # « Split carte » : panneau d'animations en haut (vertical) ou à droite (paysage), orateur dans le reste
     fmt = style["format"]
     split = fmt.get("layout") == "split"
-    y0 = int(H * fmt.get("split", 0.42)) // 2 * 2 if split else 0
     CW, CH = W, H          # toile finale
-    H = H - y0             # zone orateur (= toile entière hors split)
-    if split:
+    side = split and W > H
+    k_split = fmt.get("split", 0.42)
+    if side:               # 16:9, 21:9 : orateur à gauche, panneau à droite
+        pw, ph = int(W * k_split) // 2 * 2, H
+        px, py, y0 = W - pw, 0, 0
+        W = W - pw
+    else:                  # 9:16, 4:5… : panneau en haut, orateur en bas
+        pw, ph = W, (int(H * k_split) // 2 * 2 if split else 0)
+        px, py, y0 = 0, 0, ph
+        H = H - y0
+    if split and not side:
         plan = {**plan, "motion": [dict(m, y=m.get("y", y0 / 2 / CH)) if m.get("type") in ("title", "callout", "cta")
                                    else m for m in plan.get("motion", [])]}
 
@@ -97,7 +118,7 @@ def render(ws, style, out=None, draft=False):
     zx = 0.5 if cropped_on_face else (face["median"][0] if face and face.get("median") else fx)
 
     # 2) zooms rapides avant/arrière
-    zooms = plan.get("zooms", []) if zc.get("enabled") else []
+    zooms = (plan.get("zooms", []) if zc.get("enabled") else []) + tr.zooms(trans, dur, zc.get("cut_scale", 1.12))
     if zooms:
         z = zoom_expr(zooms, zc)
         graph.append(f"[{cur}]scale={W * 2}:{H * 2}:flags=bicubic,"
@@ -119,11 +140,12 @@ def render(ws, style, out=None, draft=False):
     if look.get("letterbox"):
         bar = int(max(0, H - W / look["letterbox"]) / 2) if W > H else int(H * 0.06)
         fx.append(f"drawbox=x=0:y=0:w=iw:h={bar}:color=black:t=fill,drawbox=x=0:y=ih-{bar}:w=iw:h={bar}:color=black:t=fill")
+    fx += tr.filters(trans)
     if fx:
         graph.append(f"[{cur}]{','.join(fx)}[vl]")
         cur = "vl"
     if split:
-        graph.append(f"[{cur}]pad={CW}:{CH}:0:{y0}:color={fmt.get('panel_color', '#0B0F1A')}[vp]")
+        graph.append(f"[{cur}]pad={CW}:{CH}:0:{y0}:color={fmt.get('panel_color', '#0B0F1A')}[vp]")  # côté : x=0
         cur = "vp"
     W, H = CW, CH
 
@@ -146,7 +168,7 @@ def render(ws, style, out=None, draft=False):
         n_in += 1
         if split and lay == "full":
             lay = "panel"
-        tw, th = {"full": (W, H), "overlay": (W, H), "fullscreen": (W, H), "panel": (W, y0)}.get(
+        tw, th = {"full": (W, H), "overlay": (W, H), "fullscreen": (W, H), "panel": (pw, ph)}.get(
             lay, (int(W * 0.46) // 2 * 2, int(W * 0.46 * 9 / 16) // 2 * 2))
         alpha = b.get("type") == "hyperframes" and str(b["file"]).lower().endswith((".mov", ".webm"))
         if alpha:  # alpha conservé (MOV/WebM Hyperframes), dans la toile ou le panneau
@@ -161,7 +183,7 @@ def render(ws, style, out=None, draft=False):
         chain += (f",fade=t=in:st=0:d={f}:alpha=1,fade=t=out:st={max(0, d - f):.3f}:d={f}:alpha=1,"
                   f"setpts=PTS+{s:.3f}/TB[b{k}]")
         graph.append(chain)
-        x, y = {"full": ("0", "0"), "fullscreen": ("0", "0"), "panel": ("(main_w-overlay_w)/2", "0"),
+        x, y = {"full": ("0", "0"), "fullscreen": ("0", "0"), "panel": (f"{px}+({pw}-overlay_w)/2", f"{py}+({ph}-overlay_h)/2"),
                 "overlay": ("(main_w-overlay_w)/2", "(main_h-overlay_h)/2")}.get(
             lay, (f"{int(W * 0.5)}", f"{int(H * 0.08)}"))
         graph.append(f"[{cur}][b{k}]overlay={x}:{y}:enable='between(t,{s:.3f},{e:.3f})':eof_action=pass[o{k}]")
@@ -171,7 +193,10 @@ def render(ws, style, out=None, draft=False):
     transcript = ws.base_transcript()
     fonts = fesc(ASSETS / "fonts")
     if style["subtitles"].get("enabled") and transcript and transcript.get("words"):
-        build_subtitles(transcript, plan, style, W, H, ws.subs)
+        sub_style = style
+        if side:  # sous-titres centrés sous l'orateur, pas à cheval sur le panneau
+            sub_style = {**style, "subtitles": {**style["subtitles"], "margin_r": (pw + W * 0.03) / W}}
+        build_subtitles(transcript, plan, sub_style, W, H, ws.subs)
         graph.append(f"[{cur}]ass={ws.subs.name}:fontsdir='{fonts}'[vs]")
         cur = "vs"
     if style["motion"].get("enabled") and build_motion(plan, style, W, H, ws.motion_ass):
@@ -216,7 +241,7 @@ def render(ws, style, out=None, draft=False):
     target = next_render(ws, draft)
     ex = style["export"]
     preset, crf = ("ultrafast", 30) if draft else (ex["preset"], ex["crf"])
-    log(f"Rendu {'draft' if draft else 'master'} {W}x{H} @ {fps}fps — {len(zooms)} zooms, "
+    log(f"Rendu {'draft' if draft else 'master'} {W}x{H} @ {fps}fps — {len(zooms)} zooms, {len(trans)} transitions, "
         f"{len(overlays)} visuels, {len(mix) - 1} pistes son…")
     ffmpeg_progress([*inputs, "-filter_complex_script", script.name, "-map", "[vout]", "-map", "[aout]",
                      "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", preset, "-crf", str(crf),

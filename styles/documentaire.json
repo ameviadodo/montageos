@@ -1,13 +1,15 @@
 {
-  "name": "documentaire", "mode": "documentaire",
+  "name": "documentaire",
+  "mode": "documentaire",
   "description": "Documentaire / storytelling : rythme posé, poussées lentes, archives et B-roll larges, lower-thirds, chapitres, étalonnage ciné.",
   "format": {"aspect": "16:9"},
-  "cut": {"min_silence": 0.8, "padding": 0.18, "remove_fillers": true},
+  "cut": {"min_silence": 0.8, "padding": 0.18, "remove_fillers": true, "transition": "fondu"},
   "zoom": {"every_s": 14, "scale": 1.06, "pattern": ["ease"], "ease_s": 1.2, "hold_s": 5},
   "subtitles": {"font": "Poppins SemiBold", "size": 0.04, "uppercase": false, "max_words": 9, "max_chars": 48, "highlight": "#FFFFFF", "emphasis": "#FFFFFF", "karaoke": false, "pop": false, "outline_w": 0.002, "shadow": 2, "margin_v": 0.07},
   "broll": {"per_minute": 5, "duration": 4.5, "fade": 0.5},
   "motion": {"hook_title": false, "font": "Poppins SemiBold", "accent": "#E8C27A"},
   "look": {"eq": "contrast=1.08:saturation=0.82:gamma=0.97", "curves": "vintage", "vignette": true, "grain": 6, "letterbox": 2.39},
   "sfx": {"volume": 0.25, "on_zoom": {"punch": null, "pulse": null, "ease": null}, "on_broll": null, "on_motion": "impact"},
-  "audio": {"lufs": -16, "music_volume": 0.16}
+  "audio": {"lufs": -16, "music_volume": 0.16},
+  "library": {"etat": "Prêt", "cards": ["doc.lieu-date", "citation.surligne", "medaillon.nom", "section.marqueurs", "stat.courbe"], "ratios": ["16:9", "21:9", "1:1"]}
 }

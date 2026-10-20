@@ -102,6 +102,19 @@ def deep_merge(base, over):
     return out
 
 
+SETTINGS = ROOT / "ui" / "settings.json"
+
+
+def active_style():
+    """Style activé dans la bibliothèque (Studio ou `monteur activer`), utilisé quand aucun n'est précisé."""
+    name = load_json(SETTINGS, {}).get("style")
+    return name if name and (STYLES / f"{name}.json").exists() else None
+
+
+def set_setting(**kw):
+    return save_json(SETTINGS, {**load_json(SETTINGS, {}), **kw})
+
+
 def load_style(name_or_path=None):
     """Charge styles/default.json puis fusionne le style demandé (nom ou chemin)."""
     style = load_json(STYLES / "default.json", {})
