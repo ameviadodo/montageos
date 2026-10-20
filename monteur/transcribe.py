@@ -2,6 +2,10 @@
 from .common import log, save_json, ffmpeg
 
 
+class NoWhisper(RuntimeError):
+    """Aucun moteur de transcription installé dans ce Python."""
+
+
 def load_model(model="small"):
     """Charge (et télécharge au besoin) le modèle faster-whisper ; repli CPU si CUDA/cuDNN est incomplet."""
     from faster_whisper import WhisperModel
@@ -48,7 +52,8 @@ def transcribe(video, out_json, model="small", language=None):
         try:
             import whisper
         except ImportError:
-            raise SystemExit("Aucun moteur Whisper installé. Lance : bash setup.sh")
+            wav.unlink(missing_ok=True)
+            raise NoWhisper("Aucun moteur Whisper installé dans ce Python")
         log(f"openai-whisper ({model}) …")
         res = whisper.load_model(model).transcribe(str(wav), language=language, word_timestamps=True)
         lang = res.get("language")

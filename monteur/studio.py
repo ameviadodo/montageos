@@ -318,6 +318,10 @@ class Handler(BaseHTTPRequestHandler):
                   "style": "Copie de style", "charte": "Extraction de charte", "carte": "Carte animée",
                   "projet": "Mise à jour projet", "doctor": "Diagnostic"}
         label = labels.get(act, act)
+        busy = [j for j in JOBS.values() if j["status"] == "running" and j.get("video") and j["video"] == body.get("video")]
+        if busy and act not in ("verif",):
+            return self.send(409, {"error": f"« {busy[0]['label']} » est déjà en cours sur ce projet : attends la fin "
+                                            "(suivi dans Activité) avant de lancer autre chose."})
         args = [act]
         if act in ("style", "charte"):
             args += [*body["sources"], "--name", body["name"]]
@@ -341,7 +345,18 @@ class Handler(BaseHTTPRequestHandler):
         return self.send(200, run_job(args, label, body.get("video")))
 
 
+def close_stale_jobs():
+    """Tâches « en cours » d'un Studio précédent (fermé ou planté) → « interrompu »."""
+    with _lock:
+        items = load_json(ACTIVITY, [])
+        for i in items:
+            if i.get("status") == "running":
+                i["status"] = "interrupted"
+        save_json(ACTIVITY, items)
+
+
 def serve(port=8765, root="."):
+    close_stale_jobs()
     Handler.root = Path(root).resolve()
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     log(f"MonteurOS Studio → http://127.0.0.1:{port}  (rushs : {Handler.root})")

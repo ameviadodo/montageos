@@ -70,6 +70,26 @@ def auto_plan(ws, style, transcript):
                 z = {"start": round(t0, 3), "end": round(end, 3), "kind": kind, "scale": zc["scale"]}
             plan["zooms"].append(z)
             last = t0
+    elif zc.get("enabled"):
+        # Sans transcription : zooms sur les points de coupe (masquent les jump cuts), sinon à intervalle régulier
+        from .common import load_json
+        keep = (load_json(ws.edl) or {}).get("keep") or []
+        cuts, acc = [], 0.0
+        for s0, e0 in keep[:-1]:
+            acc += e0 - s0
+            cuts.append(acc)
+        t, starts = 1.0, []
+        while t < dur - 1:
+            near = [c for c in cuts if t - zc["every_s"] / 2 <= c < t + zc["every_s"] / 2]
+            starts.append(round(near[0] if near else t, 3))
+            t = starts[-1] + zc["every_s"]
+        for k, t0 in enumerate(starts):
+            kind = zc["pattern"][k % len(zc["pattern"])]
+            if kind == "pulse":
+                plan["zooms"].append({"start": t0, "end": round(t0 + 0.5, 3), "kind": "pulse", "scale": zc["pulse_scale"]})
+            else:
+                plan["zooms"].append({"start": t0, "end": round(min(dur, t0 + zc["hold_s"]), 3), "kind": kind,
+                                      "scale": zc["scale"]})
 
     bc = style["broll"]
     if bc.get("enabled") and ph and dur > 6:

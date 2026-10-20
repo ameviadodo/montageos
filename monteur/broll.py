@@ -80,7 +80,9 @@ GENERATIVE = {"higgsfield", "magnific", "flow", "veo"}
 
 
 def fetch(ws, portrait=False):
-    plan = load_json(ws.plan)
+    plan = load_json(ws.plan) or {"broll": []}
+    if not plan.get("broll"):
+        log("Aucune illustration prévue dans le plan (pas de transcription ou plan vide) : rien à chercher.")
     out_dir = ws.dir / "assets" / "broll"
     out_dir.mkdir(parents=True, exist_ok=True)
     pending = []

@@ -1,7 +1,7 @@
 """Assemblage final : recadrage, zooms, B-roll, animations, sous-titres, bruitages, mixage."""
 import shutil
 
-from .common import ASSETS, ffmpeg, load_json, log, probe
+from .common import ASSETS, ffmpeg, ffmpeg_progress, load_json, log, probe
 from .sfx import auto_events
 from .subtitles import build_motion, build_subtitles
 
@@ -13,7 +13,9 @@ def out_size(info, fmt):
         return int(fmt["width"]), int(fmt["height"])
     if fmt.get("aspect", "source") in ASPECTS:
         return ASPECTS[fmt["aspect"]]
-    return info["width"] // 2 * 2, info["height"] // 2 * 2
+    w, h = info["width"], info["height"]
+    k = min(1.0, fmt.get("max_side", 1920) / max(w, h))  # 4K → 1080p : 4× plus rapide, suffisant pour les réseaux
+    return int(w * k) // 2 * 2, int(h * k) // 2 * 2
 
 
 def zoom_expr(zooms, cfg):
@@ -216,10 +218,10 @@ def render(ws, style, out=None, draft=False):
     preset, crf = ("ultrafast", 30) if draft else (ex["preset"], ex["crf"])
     log(f"Rendu {'draft' if draft else 'master'} {W}x{H} @ {fps}fps — {len(zooms)} zooms, "
         f"{len(overlays)} visuels, {len(mix) - 1} pistes son…")
-    ffmpeg([*inputs, "-filter_complex_script", script.name, "-map", "[vout]", "-map", "[aout]",
-            "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", preset, "-crf", str(crf),
-            "-r", str(fps), "-c:a", "aac", "-b:a", ex["audio_bitrate"], "-movflags", "+faststart",
-            str(target)], cwd=ws.dir)
+    ffmpeg_progress([*inputs, "-filter_complex_script", script.name, "-map", "[vout]", "-map", "[aout]",
+                     "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", preset, "-crf", str(crf),
+                     "-r", str(fps), "-c:a", "aac", "-b:a", ex["audio_bitrate"], "-movflags", "+faststart",
+                     str(target)], dur, f"Rendu {'draft' if draft else 'master'}", cwd=ws.dir)
     if not draft:
         shutil.copyfile(target, ws.final)
     if out:

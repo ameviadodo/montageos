@@ -80,3 +80,26 @@ class Texte(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Corrections(unittest.TestCase):
+    def test_sortie_plafonnee_1080p(self):
+        from monteur.render import out_size
+        self.assertEqual(out_size({"width": 2160, "height": 3840}, {"aspect": "source"}), (1080, 1920))
+        self.assertEqual(out_size({"width": 1280, "height": 720}, {"aspect": "source"}), (1280, 720))
+        self.assertEqual(out_size({"width": 3840, "height": 2160}, {"aspect": "9:16"}), (1080, 1920))
+
+    def test_zooms_sans_transcription(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from monteur.common import Workspace, load_json, load_style, save_json
+        from monteur.plan import auto_plan
+        with tempfile.TemporaryDirectory() as d:
+            ws = Workspace(Path(d) / "rush.mp4")
+            save_json(ws.edl, {"keep": [[0, 4.1], [6, 12], [14, 20]]})
+            with mock.patch("monteur.plan.probe", return_value={"duration": 16.1}):
+                auto_plan(ws, load_style("default"), None)
+            z = load_json(ws.plan)["zooms"]
+            self.assertTrue(z)
+            self.assertIn(4.1, [x["start"] for x in z])   # zoom calé sur le point de coupe

@@ -12,31 +12,32 @@ def detect(video, every=0.5):
     except (ImportError, AttributeError):
         log("Suivi du visage indisponible (pip install 'opencv-python-headless<5') — cadrage fixe.")
         return None
-    cap = cv2.VideoCapture(str(video))
-    fps = cap.get(cv2.CAP_PROP_FPS) or 30
-    step = max(1, int(round(fps * every)))
+    import subprocess
+    import numpy as np
+    from .common import probe
+    info = probe(video)  # largeur / hauteur après rotation (vidéos de téléphone)
+    W = 480
+    H = max(2, int(round(W * info["height"] / info["width"] / 2)) * 2)
+    # ffmpeg ne décode que ce qu'il faut et livre directement des images 480 px en niveaux de gris
+    p = subprocess.Popen(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(video), "-an", "-vf",
+                          f"fps=1/{every},scale={W}:{H},format=gray", "-f", "rawvideo", "-"],
+                         stdout=subprocess.PIPE)
     front = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
     prof = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml")
-    out, i = [], 0
+    out, k, size = [], 0, W * H
     while True:
-        ok = cap.grab()
-        if not ok:
+        buf = p.stdout.read(size)
+        if len(buf) < size:
             break
-        if i % step == 0:
-            ok, frame = cap.retrieve()
-            if ok:
-                h, w = frame.shape[:2]
-                scale = 480 / w
-                gray = cv2.cvtColor(cv2.resize(frame, (480, int(h * scale))), cv2.COLOR_BGR2GRAY)
-                faces = front.detectMultiScale(gray, 1.15, 5, minSize=(28, 28))
-                if len(faces) == 0:
-                    faces = prof.detectMultiScale(gray, 1.15, 5, minSize=(28, 28))
-                if len(faces):
-                    x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
-                    gh = gray.shape[0]
-                    out.append((round(i / fps, 2), round((x + fw / 2) / 480, 4), round((y + fh / 2) / gh, 4)))
-        i += 1
-    cap.release()
+        gray = np.frombuffer(buf, np.uint8).reshape(H, W)
+        faces = front.detectMultiScale(gray, 1.15, 5, minSize=(28, 28))
+        if len(faces) == 0:
+            faces = prof.detectMultiScale(gray, 1.15, 5, minSize=(28, 28))
+        if len(faces):
+            x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+            out.append((round(k * every, 2), round((x + fw / 2) / W, 4), round((y + fh / 2) / H, 4)))
+        k += 1
+    p.wait()
     return out
 
 
