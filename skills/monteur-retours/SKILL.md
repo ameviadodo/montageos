@@ -34,3 +34,11 @@ Puis nouveau draft, et marque : `bin/monteur retours RUSH.mp4 --applique 1 2 3`.
 ## 4. Livrer
 `bin/monteur render RUSH.mp4 --verif` (master versionné + `final.mp4`), QC visuel (planche lue avec Read), puis `bin/monteur projet RUSH.mp4 --etat livré`.
 Un rendu est **périmé** (pastille rouge) quand le plan, le style ou le rush a changé après lui : re-rends.
+
+
+## Retouches immédiates (sans Claude)
+Page « Retours », sous la vidéo : **✂ Couper** (0,3 à 5 s à partir de la frame), **🔍 Zoom ici**, **✖ Retirer ce qui est ici**
+(zoom, B-roll, carte, raccord ou bruitage à cet instant), **🔊 Bruitage** — appliquées tout de suite, puis draft refait.
+En ligne de commande : `bin/monteur retouche RUSH.mp4 --coupe 12.4 0.5 | --zoom 8 | --retire 15 | --bruitage 3 ding [--rendu]`.
+Une coupe décale tout le plan (cartes, zooms, raccords, bruitages) ; tout est annulable (`bin/monteur annuler`).
+Les retours **écrits** restent pour toi (Claude) : l'utilisateur les colle avec « Copier pour Claude ».

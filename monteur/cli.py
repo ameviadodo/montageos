@@ -305,6 +305,28 @@ def cmd_appliquer(a):
         fetch(ws, portrait(ws, style))
 
 
+def cmd_retouche(a):
+    """Retouche directe à un instant de la vidéo montée, puis (option) rendu draft pour la voir."""
+    from . import retouche as R
+    what = (f"Coupe de {a.coupe[1]:.1f}s à {a.coupe[0]:.1f}s" if a.coupe else f"Zoom à {a.zoom:.1f}s" if a.zoom is not None
+            else f"Retrait à {a.retire:.1f}s" if a.retire is not None else f"Bruitage à {float(a.bruitage[0]):.1f}s"
+            if a.bruitage else None)
+    if not what:
+        raise SystemExit("Précise une retouche : --coupe T D, --zoom T, --retire T ou --bruitage T NOM")
+    ws, style = get_ws(a, what)
+    if a.coupe:
+        R.cut_range(ws, *a.coupe)
+    elif a.zoom is not None:
+        R.zoom(ws, a.zoom, a.type)
+    elif a.retire is not None:
+        R.remove(ws, a.retire)
+    else:
+        R.sfx(ws, float(a.bruitage[0]), a.bruitage[1])
+    if a.rendu:
+        a.draft = True
+        cmd_render(a)
+
+
 def cmd_annuler(a):
     from .history import entries, undo
     ws = Workspace(a.video, getattr(a, "workdir", None))
@@ -451,6 +473,13 @@ def main(argv=None):
     vid("cut", cmd_cut, "Supprime blancs, hésitations, répétitions")
     s = vid("appliquer", cmd_appliquer, "Applique un style à un projet (zooms, B-roll, transitions, titre recalculés)")
     s.add_argument("--no-broll", action="store_true")
+    s = vid("retouche", cmd_retouche, "Retouche à un instant : --coupe T D, --zoom T, --retire T, --bruitage T NOM")
+    s.add_argument("--coupe", nargs=2, type=float, metavar=("T", "DUREE"))
+    s.add_argument("--zoom", type=float, metavar="T")
+    s.add_argument("--type", default="punch", choices=["punch", "pulse", "ease"])
+    s.add_argument("--retire", type=float, metavar="T", help="retire zoom / B-roll / carte / raccord / bruitage à T")
+    s.add_argument("--bruitage", nargs=2, metavar=("T", "NOM"))
+    s.add_argument("--rendu", action="store_true", help="enchaîne un rendu draft pour voir le résultat")
     s = vid("annuler", cmd_annuler, "Annule la dernière action sur un projet (--liste : historique)")
     s.add_argument("--liste", action="store_true")
     s.add_argument("--jusqua", type=int, metavar="N", help="revient juste avant l'action n°N")

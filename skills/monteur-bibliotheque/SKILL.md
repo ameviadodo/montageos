@@ -33,6 +33,8 @@ bin/monteur carte RUSH.mp4 stat.courbe --start 12.4 --set value=125 --set suffix
 Cartes « engagement / vente » : `compte.rebours` (3-2-1 + mot final), `sondage.choix` (A/B + %), `question.reponse` (bulle « Réponse à @… »),
 `comparatif.tableau` (nous vs les autres, ✓/✕ ; variables `rows`, `l_marks`, `r_marks` séparées par `;`), `classement.top` (du dernier au n°1).
 Pendant une carte chargée, `"hide_subs": true` sur l'entrée `motion` masque les sous-titres.
+Dans le Studio : chaque carte de la bibliothèque a « ＋ Poser sur une vidéo » (projet, instant choisi dans la vidéo,
+textes, draft refait automatiquement) ; dans la page Studio d'un projet : « Poser à la tête de lecture ».
 → composition Hyperframes remplie, rendue (MOV transparent si overlay, MP4 si plein cadre), ajoutée à `plan.motion`.
 Règles : une carte toutes les 4–8 s max, texte ≤ 8 mots par ligne, couleur `accent` = celle de la charte, jamais pendant le hook si un titre est déjà là.
 

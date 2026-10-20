@@ -17,7 +17,7 @@ from .common import ASSETS, ROOT, STYLES, Workspace, active_style, load_json, lo
 UI = ROOT / "ui"
 LIB = ROOT / "library"
 VIDEO_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v"}
-ACTIONS = {"affiner", "appliquer", "prep", "render", "broll", "cut", "plan", "style", "charte", "doctor", "transcribe", "verif", "carte", "projet"}
+ACTIONS = {"affiner", "appliquer", "retouche", "prep", "render", "broll", "cut", "plan", "style", "charte", "doctor", "transcribe", "verif", "carte", "projet"}
 JOBS = {}
 API = 4  # à incrémenter quand ui/index.html attend de nouveaux champs : la page détecte un Studio pas redémarré
 
@@ -448,7 +448,7 @@ class Handler(BaseHTTPRequestHandler):
         act = body["action"]
         if act not in ACTIONS:
             return self.send(400, {"error": f"action interdite : {act}"})
-        labels = {"affiner": "Affinage du style", "appliquer": "Application du style", "prep": "Préparation", "render": "Rendu master", "broll": "Recherche B-roll", "verif": "Vérification",
+        labels = {"retouche": "Retouche", "affiner": "Affinage du style", "appliquer": "Application du style", "prep": "Préparation", "render": "Rendu master", "broll": "Recherche B-roll", "verif": "Vérification",
                   "style": "Copie de style", "charte": "Extraction de charte", "carte": "Carte animée",
                   "projet": "Mise à jour projet", "doctor": "Diagnostic"}
         label = labels.get(act, act)
@@ -481,8 +481,17 @@ class Handler(BaseHTTPRequestHandler):
                 label = "Rendu draft + vérif"
             if act == "carte":
                 args += [body["card"], "--start", str(float(body["start"]))]
+                if body.get("duree"):
+                    args += ["--duree", str(float(body["duree"]))]
                 for k, v in (body.get("vars") or {}).items():
                     args += ["--set", f"{k}={v}"]
+            if act == "retouche":
+                op, t = body["op"], f"{float(body['t']):.3f}"
+                args += {"coupe": ["--coupe", t, str(float(body.get("d", 0.5)))], "zoom": ["--zoom", t, "--type", body.get("kind", "punch")],
+                         "retire": ["--retire", t], "bruitage": ["--bruitage", t, body.get("name", "whoosh")]}[op]
+                if body.get("rendu", True):
+                    args.append("--rendu")
+                label = {"coupe": "Coupe ici", "zoom": "Zoom ici", "retire": "Retrait ici", "bruitage": "Bruitage ici"}[op] + " + draft"
             if act == "projet" and body.get("etat"):
                 args += ["--etat", body["etat"]]
         return self.send(200, run_job(args, label, body.get("video")))

@@ -114,6 +114,7 @@ body.drag::after{content:"Dépose ta vidéo pour l'ajouter aux projets";position
 .addbox .drop{border:1px dashed var(--muted);border-radius:10px;padding:10px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer;display:block}
 .addbox .drop.on{border-color:var(--accent);color:var(--accent)}
 @media (max-width:900px){.addbox{grid-template-columns:1fr}}
+@media (max-width:800px){.posegrid{grid-template-columns:1fr!important}}
 .cv .meta{padding:10px 12px}
 .cv code{font-family:var(--font-mono);font-size:12px;color:var(--accent)}
 .cv .meta a{display:inline-block;margin-top:8px;font-weight:700;font-size:13px;cursor:pointer}
@@ -193,6 +194,19 @@ body.drag::after{content:"Dépose ta vidéo pour l'ajouter aux projets";position
   <div class="bar"><code id="mcode"></code><button class="btn" id="mreplay">Rejouer</button><button class="btn" id="mtab">Onglet</button><button class="btn" id="mclose">Fermer</button></div>
   <div class="stage" id="mstage"><iframe id="mframe"></iframe></div>
 </div></div>
+<div class="modal" id="posedlg"><div class="box" style="width:min(980px,100%)">
+  <div class="bar"><code id="pcode"></code><button class="btn" id="pclose">Fermer</button></div>
+  <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:18px;padding:18px" class="posegrid">
+    <div><select id="pproj" style="width:100%;margin-bottom:10px"></select>
+      <div class="player" style="min-height:200px"><video id="pvid" controls playsinline style="max-height:46vh"></video></div>
+      <p class="muted" style="font-size:12px">Mets la vidéo à l'endroit voulu : la carte démarre à cet instant.</p></div>
+    <div><label class="cap">Début (s)</label><input id="pstart" type="number" step="0.1" min="0" value="0" style="width:100%">
+      <label class="cap" style="display:block;margin-top:10px">Durée (s, vide = celle de la carte)</label><input id="pdur" type="number" step="0.1" min="0.5" style="width:100%">
+      <div id="pvars"></div>
+      <label class="chk" style="display:block;margin-top:12px"><input type="checkbox" id="pdraft" checked> Refaire un draft pour la voir dans la vidéo</label>
+      <div class="row" style="margin-top:14px"><button class="btn" id="pprev">Aperçu</button><button class="btn y" id="pgo">Poser la carte</button></div>
+      <div class="log" id="joblog" style="margin-top:10px;max-height:120px">—</div></div>
+  </div></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -220,7 +234,8 @@ async function run(action, extra = {}, then) {
     pill.classList.toggle("run", j.status === "running");
     const lg = $("#joblog"); if (lg) { lg.textContent = j.log.join("\n"); lg.scrollTop = 1e9; }
     if (j.status === "running") return setTimeout(tick, 1000);
-    toast(j.status === "done" ? `${j.label} terminé ✓` : `${j.label} : erreur`);
+    toast(j.status === "done" ? `${j.label} terminé ✓` : `${j.label} : erreur — ${(j.log.at(-1) || "").replace("[monteur] ", "")}`);
+    STATE.sel = null;  // le lecteur repasse sur le rendu le plus récent
     then ? then(j) : route();
   };
   tick();
@@ -357,6 +372,10 @@ async function vProjet(video) {
     <div class="deliv" style="margin-top:10px">${p.renders.slice().reverse().map(r => `<div class="${sel && r.name === sel.name ? "on" : ""}" data-r="${esc(r.name)}">
       <span>${r.quality === "master" ? "◆" : "◇"}</span><span>${esc(r.name)}<small>${r.quality} · ${size(r.size)} · ${ago(r.mtime)}${r.verif ? ` · vérif ${r.verif.ok ? "✓" : "✗"}${r.verif.warn ? ` ${r.verif.warn}⚠` : ""}` : ""}</small></span></div>`).join("")
       || `<div style="cursor:default">Aucun rendu — lance « Préparer » puis « Rendu draft + vérif ».</div>`}</div>
+    ${p.stale || (p.plan && !p.renders.length) ? `<div class="panel" style="border-color:var(--accent);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <b>⚠️ ${p.renders.length ? "Tes dernières modifications ne sont pas encore dans la vidéo" : "Aucune vidéo rendue pour l'instant"}</b>
+      <span class="muted">${p.renders.length ? "Le plan a changé depuis le dernier rendu (style, cartes, cuts, retouches…)." : "Le plan est prêt."} Un rendu les applique.</span>
+      <button class="btn y" id="rerender">Rendu draft maintenant</button></div>` : ""}
     <div class="split">
       <div class="player"><video id="pv" controls playsinline src="${sel ? sel.url : p.files.cut || p.files.source}"></video></div>
       <div>
@@ -394,6 +413,7 @@ async function vProjet(video) {
   $("#undo").onclick = () => undoAction(p.video);
   $$("[data-undo]").forEach(b => b.onclick = () => undoAction(p.video, +b.dataset.undo));
   $("#cp").onclick = () => { navigator.clipboard?.writeText(p.dir); toast("Chemin copié"); };
+  $("#rerender") && ($("#rerender").onclick = () => run("render", {video: p.video, draft: true}));
   $("#trfile").onchange = async e => { const f = e.target.files[0]; if (!f) return;
     const r = await api("/api/transcript", {video: p.video, name: f.name, content: await f.text()});
     toast(r.error ? r.error : `${r.words} mots importés — lance « Préparer »`); if (!r.error) vProjet(video); };
@@ -404,6 +424,7 @@ async function vProjet(video) {
     if ((a === "draft" || a === "render") && restyle)
       run("appliquer", base, j => j.status === "done" ? run("render", {...base, draft: a === "draft"}) : route());
     else if (a === "draft") run("render", {...base, draft: true});
+    else if (a === "appliquer") run("appliquer", base, j => j.status === "done" ? run("render", {...base, draft: true}) : route());
     else if (a === "livre") run("projet", {video: p.video, etat: "livré"});
     else run(a, base);
   });
@@ -441,6 +462,14 @@ async function vRetours(video) {
           <button class="btn y" id="play">▶</button><button class="btn" data-f="1">+1 img</button><button class="btn" data-s="1">+1s</button>
           <span class="tc" id="tc">00:00.00 · f0000</span></div>
         <div class="kbd" id="vinfo" style="margin-top:6px"></div>
+        <div class="panel" style="margin-top:14px"><span class="cap acc">Retouches immédiates à cette frame — appliquées dans la vidéo (draft refait)</span>
+          <div class="row">
+            <button class="btn" data-op="coupe">✂ Couper</button><select id="rcd"><option value="0.3">0,3 s</option><option value="0.5" selected>0,5 s</option><option value="1">1 s</option><option value="2">2 s</option><option value="5">5 s</option></select>
+            <button class="btn" data-op="zoom">🔍 Zoom ici</button>
+            <button class="btn" data-op="retire">✖ Retirer ce qui est ici</button>
+            <button class="btn" data-op="bruitage">🔊 Bruitage</button><select id="rsn">${["whoosh", "swoosh", "pop", "ding", "impact", "riser", "click", "camera", "glitch"].map(n => `<option>${n}</option>`).join("")}</select>
+          </div>
+          <p class="muted" style="font-size:12px;margin:8px 0 0">« Retirer » enlève le zoom, le B-roll, la carte, le raccord ou le bruitage présent à cet instant. Tout est annulable (page du projet → Historique).</p></div>
       </div>
       <div>
         <div class="row" style="justify-content:space-between"><h2 style="margin:0;font-size:20px">Retours frame par frame · <span style="color:var(--accent)">${esc(p.slug)}</span></h2>
@@ -453,9 +482,14 @@ async function vRetours(video) {
         <div class="row" style="flex-wrap:nowrap"><input id="fbtxt" style="flex:1;padding:14px" placeholder="Ton retour sur cette frame… (Entrée pour ajouter)"><button class="btn y" id="fbadd" style="padding:14px 18px">Ajouter</button></div>
         <div class="fbl" id="fbl" style="margin-top:14px"></div>
         <div class="row" style="margin-top:14px"><button class="btn" id="copy">⧉ Copier pour Claude</button><button class="btn" id="dl">⬇ Télécharger .json</button><button class="btn y" id="send">Envoyer au montage</button></div>
+        <p class="muted" style="font-size:12px">Les retours <b>écrits</b> sont des consignes pour Claude : « Copier pour Claude », puis colle-les dans la conversation — il les applique et refait le rendu.
+          Pour un effet <b>immédiat</b> sans Claude, utilise les retouches sous la vidéo.</p>
       </div>
     </div>`;
   const v = $("#fv"), fps = () => +$("#fps").value || 30;
+  $$("[data-op]").forEach(b => b.onclick = () => { v.pause(); const t = +v.currentTime.toFixed(3);
+    run("retouche", {video: p.video, op: b.dataset.op, t, d: +$("#rcd").value, name: $("#rsn").value},
+        j => { if (j.status === "done") { toast("Retouche appliquée — nouveau draft chargé"); vRetours(video).then(() => { $("#fv").currentTime = Math.max(0, t - 1); }); } else route(); }); });
   const upd = () => { $("#tc").textContent = `${tc(v.currentTime)} · f${String(Math.round(v.currentTime * fps())).padStart(4, "0")}`;
     $("#pbar").style.width = (100 * v.currentTime / (v.duration || 1)) + "%"; $("#play").textContent = v.paused ? "▶" : "❚❚"; };
   v.ontimeupdate = upd; v.onplay = upd; v.onpause = upd;
@@ -492,7 +526,8 @@ async function vRetours(video) {
   $("#dl").onclick = () => { const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify(p.review, null, 2)], {type: "application/json"}));
     a.download = `${p.slug}-retours.json`; a.click(); };
-  $("#send").onclick = async () => { p.review = await api("/api/review", {video: p.video, action: "send"}); drawFb(); toast("Envoyé au montage — Claude les appliquera"); };
+  $("#send").onclick = async () => { p.review = await api("/api/review", {video: p.video, action: "send"}); drawFb();
+    toast("Retours enregistrés pour Claude : clique « Copier pour Claude » et colle-les dans la conversation pour qu'il les applique"); };
   drawFb();
 }
 
@@ -514,7 +549,8 @@ async function vStudio(video) {
         <select id="sp">${(STATE.projects || [{video}]).map(x => `<option ${x.video === video ? "selected" : ""}>${esc(x.video)}</option>`).join("")}</select></div>
       <div class="row"><button class="btn ghost" id="sundo" title="Annuler la dernière action (Ctrl+Z)" ${p.history.length ? "" : "disabled"}>↶ Annuler${p.history.length ? ` <small class="muted">${esc(p.history[0].label.slice(0, 28))}</small>` : ""}</button>
         <button class="btn" id="save" ${p.plan ? "" : "disabled"}>Enregistrer le plan</button>
-        <button class="btn y" id="draft">Rendu draft + vérif</button><a class="btn ghost" href="#/projet/${encodeURIComponent(video)}">Le projet →</a></div></div>
+        <button class="btn y" id="draft">Rendu draft + vérif</button><a class="btn ghost" href="#/projet/${encodeURIComponent(video)}">Le projet →</a>
+        <label class="chk" title="Après une carte posée ou des cuts appliqués, un draft est refait pour voir le résultat dans la vidéo"><input type="checkbox" id="autod" ${autoDraft() ? "checked" : ""}> Draft auto</label></div></div>
     ${p.plan ? "" : `<div class="panel">Pas encore de plan. <button class="btn y" id="prep">Préparer ce rush</button></div>`}
     <div class="editor">
       <div>
@@ -533,6 +569,7 @@ async function vStudio(video) {
   $("#save").onclick = () => savePlan(true);
   $("#draft").onclick = async () => { await savePlan(); run("render", {video, draft: true}); };
   $("#sundo").onclick = async () => { await savePlan(); undoAction(video); };
+  $("#autod").onchange = e => { try { localStorage.setItem("monteur.autodraft", e.target.checked ? "1" : "0"); } catch (x) {} };
   const v = $("#sv");
   $$("#ts span[data-t]").forEach(s => s.onclick = () => v.currentTime = +s.dataset.t);
   v.ontimeupdate = () => {
@@ -598,14 +635,22 @@ function drawInspector(lib) {
   $("#cutapply").onclick = async () => { await savePlan();
     const r = await api("/api/transitions", {video: STATE.p.video, kind: $("#cutk").value, every: +$("#cute").value});
     if (r.error) return toast(r.error);
-    P.transitions = r.transitions; drawTimeline(); drawInspector(lib); toast(`${r.transitions.length} raccords « ${$("#cutk").value} » — lance un rendu draft pour voir`); };
+    P.transitions = r.transitions; drawTimeline(); drawInspector(lib); toast(`${r.transitions.length} raccords « ${$("#cutk").value} »`);
+    afterEdit(STATE.p.video)({status: "done"}); };
   const cardVals = () => Object.fromEntries($$("#cardvars [data-cv]").map(i => [i.dataset.cv, i.value]));
   $("#cardprev").onclick = () => openCard($("#cardsel").value, cardVals());
-  $("#cardput").onclick = async () => { await savePlan(); run("carte", {video: STATE.p.video, card: $("#cardsel").value, start: +($("#sv").currentTime.toFixed(2)), vars: cardVals()}); };
-  $("#emw").onchange = e => P.emphasis_words = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+  $("#cardput").onclick = async () => { await savePlan(); run("carte", {video: STATE.p.video, card: $("#cardsel").value, start: +($("#sv").currentTime.toFixed(2)), vars: cardVals()}, afterEdit(STATE.p.video)); };
+  $("#emw").onchange = e => { P.emphasis_words = e.target.value.split(",").map(s => s.trim()).filter(Boolean); autosave(); };
   $$("#insp [data-f]").forEach(el => el.onchange = () => { const [sec, i, k] = el.dataset.f.split(".");
-    P[sec][+i][k] = k === "scale" ? parseFloat(el.value) : el.value; if (sec === "broll" && k !== "layout") P[sec][+i].file = null; drawTimeline(); });
+    P[sec][+i][k] = k === "scale" ? parseFloat(el.value) : el.value; if (sec === "broll" && k !== "layout") P[sec][+i].file = null; drawTimeline(); autosave(); });
 }
+const autoDraft = () => { try { return localStorage.getItem("monteur.autodraft") !== "0"; } catch (e) { return true; } };
+function afterEdit(video) {  // modification du plan → draft refait (si « Draft auto ») pour la voir dans la vidéo
+  return j => { if (j && j.status !== "done") return route();
+    if (autoDraft()) run("render", {video, draft: true}, () => { STATE.sel = null; route(); }); else { toast("Plan modifié — lance un rendu pour le voir dans la vidéo"); route(); } };
+}
+let _saveT;
+function autosave() { clearTimeout(_saveT); _saveT = setTimeout(() => savePlan().then(() => toast("Plan enregistré (lance un draft pour le voir)")), 700); }
 async function savePlan(notify) { if (!STATE.plan) return; await api("/api/plan", {video: STATE.p.video, plan: STATE.plan}); if (notify) toast("Plan enregistré"); }
 
 // ---------- Bibliothèques ----------
@@ -621,7 +666,7 @@ const sw = cols => `<span class="sw">${(cols || []).map(c => `<i style="backgrou
 const fontsCell = f => `<div class="fonts">${f.display ? `<div><b>DISPLAY</b>${esc(f.display)}</div>` : ""}${f.body ? `<div><b>BODY</b>${esc(f.body)}</div>` : ""}${f.mono ? `<div><b>MONO</b>${esc(f.mono)}</div>` : ""}</div>`;
 function cardTile(c, prefix = "") { const [W, H] = dims();
   return `<div class="cv" data-card="${esc(c.id)}"><div class="vp" style="aspect-ratio:${W}/${H};max-width:${Math.round(Math.min(420, 300 * W / H))}px"><iframe loading="lazy" data-w="${W}" style="width:${W}px;height:${H}px" src="${cardFrame(c.id)}"></iframe></div>
-  <div class="meta"><code>${esc(prefix + c.id)}</code><div class="muted" style="font-size:12px;margin-top:4px">${esc(c.usage || "")}</div><a data-open="${c.id}">Voir en grand</a></div></div>`; }
+  <div class="meta"><code>${esc(prefix + c.id)}</code><div class="muted" style="font-size:12px;margin-top:4px">${esc(c.usage || "")}</div><a data-open="${c.id}">Voir en grand</a> · <a data-pose="${c.id}">＋ Poser sur une vidéo</a></div></div>`; }
 const ratioChips = rs => (rs || []).map(r => `<span class="rt">${esc(r)}</span>`).join("");
 const matchRatio = rs => !LIBF.ratio || !(rs || []).length || rs.includes(LIBF.ratio);
 const norm = t => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -746,11 +791,38 @@ function groups(cards, prefix = "") {
 }
 function bindCards() {
   $$("[data-open]").forEach(a => a.onclick = () => openCard(a.dataset.open));
+  $$("[data-pose]").forEach(a => a.onclick = () => poseCard(a.dataset.pose));
   $$("[data-tog]").forEach(h => h.onclick = () => { const n = h.nextElementSibling; n.hidden = !n.hidden; h.firstChild.textContent = (n.hidden ? "▸ " : "▾ ") + h.firstChild.textContent.slice(2); });
 }
 function openCard(id, vars = {}) {
   STATE.card = [id, vars]; $("#mcode").textContent = id; $("#mframe").src = cardFrame(id, vars);
   $("#modal").classList.add("on"); fitModal();
+}
+async function poseCard(id) {  // carte de la bibliothèque → posée sur une vidéo précise
+  $("#modal").classList.remove("on");
+  const lib = STATE.lib || (STATE.lib = await api("/api/library"));
+  const c = lib.cards.find(x => x.id === id); if (!c) return;
+  const d = await api("/api/projects"); const ps = (d.projects || []).filter(x => x.status !== "brut");
+  if (!ps.length) return toast("Aucun projet préparé : ajoute une vidéo puis « Préparer »");
+  $("#pcode").textContent = `${c.label} · ${c.id}`;
+  $("#pproj").innerHTML = ps.map(x => `<option>${esc(x.video)}</option>`).join("");
+  if (STATE.p && ps.some(x => x.video === STATE.p.video)) $("#pproj").value = STATE.p.video;
+  $("#pvars").innerHTML = Object.entries(c.vars || {}).map(([k, v]) => `<label class="cap" style="display:block;margin-top:10px">${esc(k)}</label><input data-pv="${esc(k)}" style="width:100%" value="${esc(v)}">`).join("");
+  const load = async () => { const p = await api("/api/project?video=" + encodeURIComponent($("#pproj").value));
+    $("#pvid").src = (p.renders.at(-1) || {}).url || p.files.cut || p.files.source; $("#pvid").dataset.video = p.video; };
+  $("#pproj").onchange = load; await load();
+  const follow = () => $("#pstart").value = $("#pvid").currentTime.toFixed(1);
+  $("#pvid").ontimeupdate = follow; $("#pvid").onseeked = follow; $("#pvid").onpause = follow;
+  const vals = () => Object.fromEntries($$("#pvars [data-pv]").map(i => [i.dataset.pv, i.value]));
+  $("#pprev").onclick = () => { $("#posedlg").classList.remove("on"); openCard(id, vals()); };
+  $("#pgo").onclick = () => { const video = $("#pproj").value, body = {video, card: id, start: +$("#pstart").value, vars: vals()};
+    if (+$("#pdur").value) body.duree = +$("#pdur").value;
+    const draft = $("#pdraft").checked;
+    run("carte", body, j => { if (j.status !== "done") return;
+      const go = () => { $("#posedlg").classList.remove("on"); STATE.sel = null; location.hash = "#/projet/" + encodeURIComponent(video); };
+      draft ? run("render", {video, draft: true}, go) : go(); }); };
+  $("#pclose").onclick = () => { $("#pvid").pause(); $("#posedlg").classList.remove("on"); };
+  $("#posedlg").classList.add("on");
 }
 function fitModal() { const st = $("#mstage"), f = $("#mframe"); if (!st) return; const [W, H] = dims();
   st.style.aspectRatio = `${W}/${H}`; st.style.width = `min(100%, calc(76vh * ${W} / ${H}))`; st.style.margin = "0 auto";
