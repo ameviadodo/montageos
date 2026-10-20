@@ -27,7 +27,8 @@ def run(cmd, capture=False, check=True, cwd=None):
     res = subprocess.run(cmd, capture_output=capture, text=True, encoding="utf-8", errors="replace", cwd=cwd)
     if check and res.returncode != 0:
         err = (res.stderr or "")[-3000:] if capture else ""
-        raise RuntimeError(f"Commande échouée ({res.returncode}): {cmd[0]}\n{err}")
+        cause = f" — {ffmpeg_cause(res.stderr or '')}" if capture and "ffmpeg" in Path(cmd[0]).name.lower() else ""
+        raise RuntimeError(f"Commande échouée ({res.returncode}): {Path(cmd[0]).name}{cause}\n{err}")
     return res
 
 
@@ -50,8 +51,18 @@ def ffmpeg_progress(args, duration, label, cwd=None, step=5):
                 log(f"{label} {pct} %")
     err = p.stderr.read()
     if p.wait() != 0:
-        raise RuntimeError(f"Commande échouée ({p.returncode}): ffmpeg\n{err[-3000:]}")
+        raise RuntimeError(f"Commande échouée ({p.returncode}): ffmpeg — {ffmpeg_cause(err)}\n{err[-6000:]}")
     log(f"{label} 100 %")
+
+
+def ffmpeg_cause(err):
+    """La ligne d'erreur utile d'ffmpeg (souvent noyée avant « Nothing was written into output file »)."""
+    keys = ("Error", "error", "Invalid", "invalid", "No such", "not found", "Cannot", "cannot", "failed", "Failed",
+            "Unknown", "Unable", "unsupported", "Permission", "too long")
+    lines = [l.strip() for l in err.splitlines() if l.strip()]
+    useful = [l for l in lines if any(k in l for k in keys) and "Nothing was written" not in l
+              and not l.startswith("Conversion failed")]
+    return useful[0][:300] if useful else (lines[-1][:300] if lines else "erreur inconnue")
 
 
 def ffmpeg(args, capture=False, cwd=None):
