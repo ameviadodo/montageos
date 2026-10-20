@@ -82,3 +82,20 @@ class Bibliotheque(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VoixOff(unittest.TestCase):
+    def test_prononciation(self):
+        from monteur.voiceover import prononce
+        self.assertEqual(prononce("Rendu draft des frames de MonteurOS", "espeak"), "Rendu drafte des frème de Monteur O S")
+        self.assertIn("Monteur O.S.", prononce("MonteurOS", "edge"))
+
+    def test_repli_moteur(self):
+        from unittest import mock
+        from monteur import voiceover
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(voiceover, "_edge", side_effect=OSError("réseau")), \
+                mock.patch.object(voiceover, "_espeak", side_effect=lambda t, out, v, r: out.write_bytes(b"x")), \
+                mock.patch.object(voiceover, "probe", return_value={"duration": 1.5}):
+            wav, dur, eng = voiceover.synth("Bonjour", Path(d) / "a.wav")
+        self.assertEqual((eng, dur), ("espeak", 1.5))
