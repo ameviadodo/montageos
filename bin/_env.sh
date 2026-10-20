@@ -20,8 +20,9 @@ monteur_venv_python() {
 # Python système ≥ 3.9 (sous Windows : lanceur « py », en évitant le faux python du Microsoft Store)
 monteur_find_python() {
   local c
-  if [ "$MONTEUR_WIN" = 1 ]; then set -- "py -3.12" "py -3.11" "py -3" python python3
-  else set -- python3 python; fi
+  # Whisper (faster-whisper → PyAV, ctranslate2) n'a de paquets prêts que pour Python 3.9–3.13 : 3.12 d'abord
+  if [ "$MONTEUR_WIN" = 1 ]; then set -- "py -3.12" "py -3.11" "py -3.13" "py -3.10" "py -3" python python3
+  else set -- python3.12 python3.11 python3.13 python3.10 python3 python; fi
   for c in "$@"; do
     # shellcheck disable=SC2086
     if $c -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1; then

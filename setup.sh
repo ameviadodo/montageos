@@ -4,6 +4,7 @@
 #   bash setup.sh --ai       # + google-genai (Veo / Google Flow)
 #   bash setup.sh --motion   # + Hyperframes (Node ≥ 22) et ses skills
 #   bash setup.sh --voix     # + espeak-ng / MBROLA (voix off hors-ligne ; en ligne, edge-tts suffit)
+#   bash setup.sh --leger    # minimum pour le tuto / la voix off : ffmpeg, edge-tts, polices, bruitages (sans Whisper)
 #   bash setup.sh --all
 # Linux, macOS et Windows (Git Bash). Variable MONTEUR_WHISPER_MODEL : modèle préchargé (défaut : small).
 set -euo pipefail
@@ -11,8 +12,8 @@ cd "$(dirname "$0")"
 ROOT="$PWD"
 . "$ROOT/bin/_env.sh"
 AI=0; MOTION=0
-VOIX=0
-for a in "$@"; do case "$a" in --ai) AI=1;; --motion) MOTION=1;; --voix) VOIX=1;; --all) AI=1; MOTION=1; VOIX=1;; esac; done
+VOIX=0; LEGER=0
+for a in "$@"; do case "$a" in --ai) AI=1;; --motion) MOTION=1;; --voix) VOIX=1;; --leger) LEGER=1;; --all) AI=1; MOTION=1; VOIX=1;; esac; done
 say() { printf '\033[1;35m[MonteurOS]\033[0m %s\n' "$*"; }
 SUDO=""; [ "$MONTEUR_WIN" = 0 ] && [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null && SUDO="sudo"
 
@@ -33,26 +34,51 @@ fi
 ffmpeg -hide_banner -filters 2>/dev/null | awk '$2=="ass"{f=1} END{exit !f}' || say "⚠️  ffmpeg sans libass : sous-titres indisponibles (installe un ffmpeg complet)."
 
 # 2) Python (venv local : .venv/Scripts/python.exe sous Windows, .venv/bin/python ailleurs)
-if ! VPY="$(monteur_venv_python "$ROOT")"; then
-  SYS_PY="$(monteur_find_python)" || { say "⚠️  Python 3.9+ introuvable. Windows : https://www.python.org/downloads/ (coche « py launcher »)."; exit 1; }
-  if [ -d .venv ]; then  # venv cassé ou créé sur un autre système : on le met de côté
-    say "Environnement .venv inutilisable ici, renommé en .venv.old"; rm -rf .venv.old; mv .venv .venv.old
-  fi
+pyver() { "$1" -c 'import sys;print("%d.%d" % sys.version_info[:2])' 2>/dev/null; }
+whisper_ok_ver() { case "$1" in 3.9|3.10|3.11|3.12|3.13) return 0;; *) return 1;; esac; }
+make_venv() {
+  SYS_PY="$(monteur_find_python)" || { say "⚠️  Python 3.9+ introuvable. Windows : « winget install Python.Python.3.12 » (ou python.org, coche « py launcher »)."; exit 1; }
+  if [ -d .venv ]; then say "Ancien .venv mis de côté (.venv.old)"; rm -rf .venv.old; mv .venv .venv.old; fi
   say "Création de l'environnement Python (.venv) avec « $SYS_PY »…"
   # shellcheck disable=SC2086
   $SYS_PY -m venv .venv 2>/dev/null || { [ "$MONTEUR_WIN" = 0 ] && $SUDO apt-get install -y -qq python3-venv && $SYS_PY -m venv .venv; }
   VPY="$(monteur_venv_python "$ROOT")" || { say "⚠️  Échec de création du venv."; exit 1; }
+}
+if ! VPY="$(monteur_venv_python "$ROOT")"; then
+  make_venv
+elif [ "$LEGER" = 0 ] && ! whisper_ok_ver "$(pyver "$VPY")" && ! "$VPY" -c "import faster_whisper" 2>/dev/null; then
+  # venv créé avec un Python trop récent pour Whisper : on le refait si un Python compatible existe
+  if CAND="$(monteur_find_python)" && whisper_ok_ver "$($CAND -c 'import sys;print("%d.%d" % sys.version_info[:2])' 2>/dev/null)"; then
+    say "Le .venv utilise Python $(pyver "$VPY"), trop récent pour Whisper : recréation avec « $CAND »."
+    make_venv
+  fi
 fi
-say "Python : $VPY"
+PYV="$(pyver "$VPY")"
+say "Python : $VPY ($PYV)"
 "$VPY" -m pip install -q --upgrade pip
-PKGS=(faster-whisper yt-dlp "opencv-python-headless<5" edge-tts)
+# Paquets légers d'abord (voix off, téléchargement, vision) : ils ne doivent pas dépendre de Whisper
+PKGS=(edge-tts)
+[ "$LEGER" = 0 ] && PKGS+=(yt-dlp "opencv-python-headless<5")
 [ "$AI" = 1 ] && PKGS+=(google-genai)
 say "Paquets Python : ${PKGS[*]}"
-"$VPY" -m pip install -q --upgrade "${PKGS[@]}"
-"$VPY" -c "import faster_whisper" 2>/dev/null || {
-  say "⚠️  faster-whisper ne s'importe pas avec ce Python ($("$VPY" -c 'import sys;print(sys.version.split()[0])'))."
-  say "   Windows : installe Python 3.12 (« winget install Python.Python.3.12 »), supprime .venv et relance setup.sh."; exit 1; }
-say "Moteur Whisper installé (faster-whisper)."
+"$VPY" -m pip install -q --upgrade --prefer-binary "${PKGS[@]}" || say "⚠️  Certains paquets n'ont pas pu s'installer (voir ci-dessus)."
+WHISPER=0
+if [ "$LEGER" = 0 ]; then
+  say "Moteur Whisper (faster-whisper)…"
+  if "$VPY" -m pip install -q --upgrade --only-binary=av,ctranslate2,tokenizers "${MONTEUR_WHISPER_PKG:-faster-whisper}" \
+     && "$VPY" -c "import faster_whisper" 2>/dev/null; then
+    WHISPER=1; say "Moteur Whisper installé (faster-whisper)."
+  else
+    if whisper_ok_ver "$PYV"; then
+      say "⚠️  Whisper n'a pas pu s'installer avec Python $PYV. Vérifie ta connexion puis relance : bash setup.sh"
+    else
+      say "⚠️  Python $PYV est trop récent pour Whisper (aucun paquet prêt pour cette version)."
+      say "   Installe Python 3.12 puis relance setup.sh (il recréera .venv tout seul) :"
+      [ "$MONTEUR_WIN" = 1 ] && say "     winget install Python.Python.3.12" || say "     https://www.python.org/downloads/release/python-3120/"
+    fi
+    say "   Le reste de MonteurOS (rendu, voix off, tuto, cartes…) fonctionne sans Whisper."
+  fi
+fi
 
 # 3) Polices pour sous-titres et titres (OFL)
 mkdir -p assets/fonts
@@ -75,9 +101,11 @@ fetch_font Fraunces.ttf "$GF/fraunces/Fraunces%5BSOFT,WONK,opsz,wght%5D.ttf"
 "$ROOT/bin/monteur" sfx >/dev/null && say "Bruitages prêts dans assets/sfx/"
 
 # 4a) Modèle Whisper préchargé (sinon téléchargé au premier « prep »)
-WM="${MONTEUR_WHISPER_MODEL:-small}"
-say "Préchargement du modèle Whisper « $WM » (une seule fois)…"
-"$ROOT/bin/monteur" whisper --model "$WM" || say "⚠️  Modèle non téléchargé (réseau ?). Il le sera au premier « prep », ou relance : bin/monteur whisper"
+if [ "$WHISPER" = 1 ]; then
+  WM="${MONTEUR_WHISPER_MODEL:-small}"
+  say "Préchargement du modèle Whisper « $WM » (une seule fois)…"
+  "$ROOT/bin/monteur" whisper --model "$WM" || say "⚠️  Modèle non téléchargé (réseau ?). Il le sera au premier « prep », ou relance : bin/monteur whisper"
+fi
 
 # 4b) GSAP en local (aperçus des cartes animées hors-ligne)
 if command -v npm >/dev/null && [ ! -s assets/vendor/gsap.min.js ]; then
