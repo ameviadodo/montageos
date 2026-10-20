@@ -26,9 +26,12 @@ fi
 echo "Kit : $KIT — voix : $VOIX ($MOTEUR)"
 cd "$ROOT"
 . bin/_env.sh
-monteur_venv_python "$ROOT" >/dev/null || bash setup.sh
-. bin/_env.sh
-"${MONTEUR_PY[@]}" -c "import edge_tts" 2>/dev/null || "${MONTEUR_PY[@]}" -m pip install -q edge-tts
+# Installation légère suffisante pour le tuto (pas besoin de Whisper) : venv, edge-tts, polices, bruitages
+if ! monteur_venv_python "$ROOT" >/dev/null || ! "${MONTEUR_PY[@]}" -c "import edge_tts" 2>/dev/null \
+   || [ ! -s assets/fonts/Montserrat-Bold.ttf ] || [ ! -s assets/sfx/whoosh.wav ]; then
+  MONTEUR_NO_AUTOSETUP=1 bash setup.sh --leger
+  . bin/_env.sh
+fi
 [ "$MOTEUR" = espeak ] && VOIX_ARG=() || VOIX_ARG=(--voix "$VOIX")
 "${MONTEUR_PY[@]}" docs/tuto/compose.py "$KIT" --moteur "$MOTEUR" "${VOIX_ARG[@]}"
 echo "✅ Tuto prêt : $KIT/MonteurOS-tuto.mp4"
