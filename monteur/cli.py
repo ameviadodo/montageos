@@ -52,6 +52,12 @@ def cmd_doctor(a):
             optional = mod in ("google.genai", "cv2")
             print(f"{'➖' if optional else '❌'} {mod}")
             ok &= optional
+    try:
+        import faster_whisper  # noqa: F401
+        print("✅ transcription : Whisper local")
+    except ImportError:
+        print("⚠️  transcription : pas de Whisper local → bash setup.sh (Python 3.12 auto via uv) "
+              "ou bin/monteur transcription RUSH fichier.srt (export WhisperAI)")
     import os
     for k in ("PEXELS_API_KEY", "PIXABAY_API_KEY", "FREESOUND_API_KEY", "MAGNIFIC_API_KEY", "GEMINI_API_KEY"):
         print(f"{'🔑' if os.environ.get(k) else '➖'} {k}")
@@ -101,6 +107,16 @@ def cmd_voix(a):
     else:
         wav, d, eng = synth(a.texte, a.out, a.moteur, a.voix, a.vitesse)
         print(f"✅ {wav} ({d:.1f} s, moteur {eng})")
+
+
+def cmd_transcription(a):
+    """Importe une transcription faite ailleurs (WhisperAI via Claude, sous-titres…) puis, au choix, prépare."""
+    from .transcript_import import import_transcript
+    ws, _ = get_ws(a)
+    import_transcript(ws, a.fichier, a.language or "fr")
+    if a.prep:
+        a.force, a.no_cut, a.no_broll, a.model = False, False, a.no_broll, "small"
+        cmd_prep(a)
 
 
 def cmd_transcribe(a):
@@ -327,6 +343,12 @@ def main(argv=None):
         s.add_argument("--force", action="store_true")
         s.add_argument("--no-broll", action="store_true")
         s.add_argument("--no-cut", action="store_true")
+    s = vid("transcription", cmd_transcription,
+            "Importe une transcription (SRT/VTT/JSON, ex. export WhisperAI) à la place de Whisper local")
+    s.add_argument("fichier")
+    s.add_argument("--prep", action="store_true", help="enchaîne la préparation (coupe, plan, B-roll)")
+    s.add_argument("--language")
+    s.add_argument("--no-broll", action="store_true")
     s = vid("transcribe", cmd_transcribe, "Transcription mot à mot")
     s.add_argument("--model", default="small")
     s.add_argument("--language")

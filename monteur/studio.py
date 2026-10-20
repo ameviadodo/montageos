@@ -304,6 +304,16 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     return self.send(400, {"error": "action inconnue"})
                 return self.send(200, {**data, "text": review.as_text(ws)})
+            if u.path == "/api/transcript":
+                from .transcript_import import import_transcript
+                ws = Workspace(self.video_path(body["video"]))
+                dest = ws.dir / "import" / Path(body["name"]).name
+                dest.parent.mkdir(exist_ok=True)
+                dest.write_text(body["content"], encoding="utf-8")
+                data = import_transcript(ws, dest)
+                log_activity({"id": uuid.uuid4().hex[:8], "label": "Transcription importée", "video": body["video"],
+                              "status": "done", "started": int(time.time()), "tail": [f"{len(data['words'])} mots"]})
+                return self.send(200, {"words": len(data["words"])})
             if u.path == "/api/run":
                 return self.run_action(body)
             self.send(404, {"error": "introuvable"})

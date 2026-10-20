@@ -103,3 +103,36 @@ class Corrections(unittest.TestCase):
             z = load_json(ws.plan)["zooms"]
             self.assertTrue(z)
             self.assertIn(4.1, [x["start"] for x in z])   # zoom calé sur le point de coupe
+
+
+class ImportTranscription(unittest.TestCase):
+    def parse(self, text, suffix):
+        import tempfile
+        from pathlib import Path
+        from monteur.transcript_import import load, segments_to_words
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / f"t{suffix}"
+            p.write_text(text, encoding="utf-8")
+            return segments_to_words(load(p))
+
+    def test_srt_avec_locuteur(self):
+        w = self.parse("1\n00:00:01,000 --> 00:00:03,000\nSpeaker 1: Bonjour à tous\n", ".srt")
+        self.assertEqual([x["w"] for x in w], ["Bonjour", "à", "tous"])
+        self.assertAlmostEqual(w[0]["start"], 1.0)
+        self.assertLessEqual(w[-1]["end"], 3.0)
+
+    def test_vtt(self):
+        w = self.parse("WEBVTT\n\n00:01.500 --> 00:02.500\n<v Ana>Salut</v>\n", ".vtt")
+        self.assertEqual((w[0]["w"], w[0]["start"]), ("Salut", 1.5))
+
+    def test_json_millisecondes_et_mots(self):
+        import json
+        seg = [{"start": 1000, "end": 40000, "text": "a b"},
+               {"start": 40000, "end": 41000, "text": "c", "words": [{"word": "c", "start": 40000, "end": 40500}]}]
+        w = self.parse(json.dumps({"segments": seg}), ".json")
+        self.assertAlmostEqual(w[0]["start"], 1.0)
+        self.assertEqual((w[-1]["w"], w[-1]["start"], w[-1]["end"]), ("c", 40.0, 40.5))
+
+    def test_texte_horodate(self):
+        w = self.parse("[00:05] premier bloc\n[00:09] second\n", ".txt")
+        self.assertEqual((w[0]["start"], w[-1]["w"]), (5.0, "second"))

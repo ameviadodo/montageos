@@ -19,6 +19,13 @@ Voir skill `monteur-setup` en cas d'échec.
 - Format : `9:16` (Reels/Shorts/TikTok) ou `16:9` (YouTube) — défaut : celui du style, sinon du rush. Si l'utilisateur donne des liens YouTube / MP4 de référence → skill `monteur-copie-style` d'abord.
 - Musique éventuelle (`--music fichier.mp3`, ducking automatique sous la voix).
 
+## 1b. Transcription : Whisper local, ou connecteur WhisperAI
+`bin/monteur doctor` indique si Whisper local est installé. S'il ne l'est pas (Python trop récent, réseau…) :
+- `bash setup.sh` crée tout seul un Python 3.12 dédié (uv) et y installe Whisper ;
+- **ou, si le connecteur WhisperAI est connecté à Claude** : `start_upload` (style `verbatim` pour garder « euh » et prises ratées, langue du rush), attendre `get_transcript` statut `completed`, lire `get_transcript` au format `srt` (pages via `nextOffset`), écrire le tout dans `RUSH.monteur/import/whisperai.srt`, puis
+  `bin/monteur transcription RUSH.mp4 RUSH.monteur/import/whisperai.srt --prep`. Demander avant d'utiliser des minutes WhisperAI.
+- L'utilisateur peut aussi déposer le SRT/VTT/JSON exporté dans le Studio : page projet › « Importer une transcription ».
+
 ## 2. Préparation automatique
 ```bash
 bin/monteur prep RUSH.mp4 --style hormozi --aspect 9:16 [--language fr] [--model small|medium|large-v3]
