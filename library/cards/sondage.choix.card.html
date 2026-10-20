@@ -1,0 +1,23 @@
+<!--meta {"label":"Sondage A / B","category":"Engagement","mode":"overlay","duration":4.5,
+"vars":{"question":"Tu préfères ?","a":"Le matin","b":"Le soir","pa":"64","pb":"36"},"tags":["sondage","vote","poll","question","engagement","commentaires","choix"],
+"usage":"Question + deux options dont les barres se remplissent jusqu'au pourcentage : pousse les commentaires (« dis-moi en com »)."}-->
+<style>
+.pl{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(80%,calc(var(--u)*90));padding:calc(var(--u)*3);border-radius:calc(var(--u)*2.4);
+ background:rgba(11,15,26,.86);border:1px solid rgba(255,255,255,.1)}
+.q{font-weight:900;font-size:calc(var(--u)*4.4);margin-bottom:calc(var(--u)*2.2)}
+.op{position:relative;height:calc(var(--u)*7);border-radius:calc(var(--u)*1.2);background:rgba(255,255,255,.08);margin-top:calc(var(--u)*1.4);overflow:hidden}
+.op i{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent);opacity:.9}
+.op.b i{background:#7CC6FF}
+.op span{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 calc(var(--u)*2.2);font-weight:800;font-size:calc(var(--u)*2.8);color:#fff;mix-blend-mode:normal;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+</style>
+<template><div class="pl"><div class="q">{{question}}</div>
+<div class="op a"><i id="ba"></i><span><b>{{a}}</b><b id="ta">0 %</b></span></div>
+<div class="op b"><i id="bb"></i><span><b>{{b}}</b><b id="tb">0 %</b></span></div></div></template>
+<script>
+const va = { v: 0 }, vb = { v: 0 };
+tl.from(".pl", { y: 40, opacity: 0, duration: .4, ease: "back.out(1.5)" }, 0).from(".op", { x: -30, opacity: 0, stagger: .12, duration: .3 }, .3)
+  .to("#ba", { width: V.pa + "%", duration: 1.4, ease: "power2.out" }, .9).to("#bb", { width: V.pb + "%", duration: 1.4, ease: "power2.out" }, .9)
+  .to(va, { v: +V.pa, duration: 1.4, ease: "power2.out", onUpdate: () => document.getElementById("ta").textContent = Math.round(va.v) + " %" }, .9)
+  .to(vb, { v: +V.pb, duration: 1.4, ease: "power2.out", onUpdate: () => document.getElementById("tb").textContent = Math.round(vb.v) + " %" }, .9)
+  .to(".pl", { opacity: 0, y: -20, duration: .35 }, V.DUR - .35);
+</script>

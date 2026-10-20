@@ -172,18 +172,27 @@ def render_cut(video, edl, out, workdir):
         f"({edl['stats']['segments']} segments) → {out}")
 
 
-def remap_transcript(transcript, keep):
+def remap_transcript(transcript, keep, removed=()):
+    """Mots → timeline coupée. Un mot est gardé s'il chevauche surtout un segment gardé (horodatages approximatifs
+    d'une transcription importée : la fin d'un mot peut déborder sur un blanc supprimé) ; les mots retirés exprès
+    (hésitations, prises ratées : indices `removed`) ne reviennent jamais."""
     words, offset, out = transcript["words"], 0.0, []
     bounds = []
     for s, e in keep:
         bounds.append((s, e, offset))
         offset += e - s
-    for w in words:
-        for s, e, off in bounds:
-            if w["start"] >= s - 0.02 and w["end"] <= e + 0.02:
-                out.append({**w, "start": round(max(0, w["start"] - s) + off, 3),
-                            "end": round(min(e, w["end"]) - s + off, 3)})
-                break
+    removed = set(removed)
+    for i, w in enumerate(words):
+        if i in removed:
+            continue
+        dur = max(0.01, w["end"] - w["start"])
+        best = max(bounds, key=lambda b: min(b[1], w["end"]) - max(b[0], w["start"]), default=None)
+        if not best:
+            continue
+        s, e, off = best
+        if min(e, w["end"]) - max(s, w["start"]) >= 0.25 * dur or (w["start"] >= s - 0.02 and w["end"] <= e + 0.02):
+            out.append({**w, "start": round(max(0, w["start"] - s) + off, 3),
+                        "end": round(max(min(e, w["end"]) - s, max(0, w["start"] - s) + 0.05) + off, 3)})
     return {**transcript, "words": out, "text": " ".join(w["w"] for w in out)}
 
 
@@ -193,5 +202,5 @@ def cut(ws, style, transcript=None):
     save_json(ws.edl, edl)
     render_cut(ws.source, edl, ws.cut_video, ws.dir)
     if transcript:
-        save_json(ws.cut_transcript, remap_transcript(transcript, edl["keep"]))
+        save_json(ws.cut_transcript, remap_transcript(transcript, edl["keep"], [r["i"] for r in edl.get("removed", [])]))
     return edl

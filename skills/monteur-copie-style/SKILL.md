@@ -17,6 +17,14 @@ Le brouillon est déjà utilisable : couleurs vives lisibles relevées sur l'ima
 rythme → `cut.transition` (`mix` si ≥ 30 coupes/min, `zoomcut` si ≥ 15, sinon `hard`), mots par bloc, cartes de la bibliothèque (`library.cards`), ratio le plus proche (`9:16 16:9 1:1 4:5 3:4 2:3 21:9`).
 Sorties : `styles/refs/<nom>/<vidéo>/profile.json`, planches `contact_sheet.png` (30 images), `burst.png` (rafale 4 i/s → zooms, pops, transitions), `frame_1..3.png` (pleine définition → typo). Brouillon : `styles/<nom>.json`.
 
+## 1 bis. Affiner (automatique, enchaîné après la copie)
+`bin/monteur affiner <nom>` (ou bouton **Affiner automatiquement** sur la page du style dans le Studio ; `--sans-affinage` pour sauter) :
+- **cuts réels** à chaque coupe : flash (pic de luminance), passage au noir, whip (image floue), zoom cut (même plan recadré) → `cut.transition`, `transition_every` ;
+- **zooms dans les plans** (ORB + similitude, 12 i/s) : punch-in ou poussée lente → `zoom.every_s`, `scale`, `pattern` ;
+- **sous-titres incrustés** : bande de l'image (texte clair/vif bordé de sombre, concentré et qui change), taille (étalonnée sur un rendu MonteurOS), mots par bloc, blanc + couleur d'accent → `subtitles.position`, `margin_v`, `size`, `max_words`, `primary`, `highlight`. Pas de sous-titres dans la référence → ceux du style sont gardés.
+Rapport dans `reference.affinage`, planche `styles/refs/<nom>/<vidéo>/affinage.png` (bande détectée en jaune), état **Affiné**.
+Validé sur des rendus de style connu (hormozi : taille 0,075, marge 0,35, 2 mots, jaune, flash — retrouvés). Limites : la **police exacte**, les majuscules et la cartouche restent à vérifier à l'œil (étape 2 ; bouton « Copier pour Claude »).
+
 ## 2. Regarder (toi — obligatoire)
 Ouvre les PNG avec l'outil Read et complète `styles/<nom>.json` :
 - **subtitles** : police la plus proche dans `assets/fonts/` (sinon télécharge l'OFL équivalente depuis github.com/google/fonts dans `assets/fonts/`), taille relative, couleurs (`primary`, `highlight`, `emphasis` en hex), majuscules, mots par bloc, position, cartouche (`box`), contour.

@@ -27,6 +27,7 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 | `monteur/sfx.py` | bruitages synthétisés / Freesound / événements auto |
 | `monteur/render.py` | recadrage, zoompan, look, overlays, ASS, mix + loudnorm |
 | `monteur/style_clone.py` | analyse de références → `styles/<nom>.json` |
+| `monteur/style_refine.py` | affinage auto d'un style copié : cuts réels, zooms, bande/taille/couleurs des sous-titres |
 | `monteur/charte.py` | palette → `ui/themes/<nom>.json` |
 | `monteur/slideshow.py` | photos produit → vidéo |
 | `monteur/verify.py` | contrôle qualité d'un rendu (noirs, blancs, saturation, mots coupés…) |

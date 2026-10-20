@@ -10,5 +10,5 @@
   "motion": {"hook_title": true, "accent": "#FFE600", "cta": {"text": "COMMANDE MAINTENANT", "subtext": "Lien dans la bio", "duration": 2.8}},
   "look": {"eq": "contrast=1.06:saturation=1.15"},
   "sfx": {"volume": 0.45},
-  "library": {"etat": "Prêt", "cards": ["mot.punch", "prix.promo", "avis.etoiles", "titre.barre", "transition.volet"], "ratios": ["9:16", "4:5", "1:1", "16:9"]}
+  "library": {"etat": "Prêt", "cards": ["mot.punch", "prix.promo", "avis.etoiles", "titre.barre", "transition.volet", "compte.rebours", "comparatif.tableau"], "ratios": ["9:16", "4:5", "1:1", "16:9"]}
 }

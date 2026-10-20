@@ -1,0 +1,23 @@
+<!--meta {"label":"Comparatif produit","category":"Produit","mode":"overlay","duration":5,
+"vars":{"left":"Nous","right":"Les autres","rows":"Livraison 24 h;Garantie 2 ans;Prix juste;SAV humain","l_marks":"1;1;1;1","r_marks":"0;1;0;0"},"tags":["comparatif","comparaison","versus","vs","produit","concurrent","tableau","avantages"],
+"usage":"Tableau « nous vs les autres » : les lignes arrivent une à une, coches vertes et croix rouges. Pub, page produit, UGC comparatif."}-->
+<style>
+.ct{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(86%,calc(var(--u)*100));border-radius:calc(var(--u)*2);overflow:hidden;
+ background:rgba(11,15,26,.88);border:1px solid rgba(255,255,255,.1)}
+.ct .r{display:grid;grid-template-columns:2.2fr 1fr 1fr;align-items:center;padding:calc(var(--u)*1.5) calc(var(--u)*2.4);border-top:1px solid rgba(255,255,255,.07);
+ font-size:calc(var(--u)*2.6);font-weight:700}
+.ct .h{border:0;font-weight:900;font-size:calc(var(--u)*2.8);background:rgba(255,255,255,.04)}
+.ct .h b:nth-child(2){color:var(--accent)}
+.ct .r > *:not(:first-child){text-align:center}
+.y{color:#4ADE80;font-weight:900}.n{color:#FF5A6E;font-weight:900}
+</style>
+<template><div class="ct" id="ct"><div class="r h"><b></b><b>{{left}}</b><b>{{right}}</b></div></div></template>
+<script>
+const ct = document.getElementById("ct"), rows = V.rows.split(";"), L = String(V.l_marks).split(";"), R = String(V.r_marks).split(";");
+const mk = v => v.trim() === "1" ? '<span class="y">✓</span>' : '<span class="n">✕</span>';
+rows.forEach((t, i) => { const d = document.createElement("div"); d.className = "r row";
+  d.innerHTML = `<span></span>${mk(L[i] || "1")}${mk(R[i] || "0")}`; d.firstChild.textContent = t; ct.appendChild(d); });
+tl.from(".ct", { scale: .94, opacity: 0, duration: .35 }, 0).from(".row", { x: -40, opacity: 0, stagger: .35, duration: .3, ease: "power2.out" }, .4)
+  .from(".row .y, .row .n", { scale: 0, stagger: .175, duration: .25, ease: "back.out(3)" }, .6)
+  .to(".ct", { opacity: 0, duration: .35 }, V.DUR - .35);
+</script>

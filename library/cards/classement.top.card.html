@@ -1,0 +1,22 @@
+<!--meta {"label":"Classement Top N","category":"Listes","mode":"overlay","duration":5,
+"vars":{"title":"TOP 3 des outils","items":"CapCut;Premiere Pro;DaVinci Resolve"},"tags":["top","classement","ranking","liste","meilleurs","podium","numéro"],
+"usage":"Classement qui se révèle du dernier au premier (3 → 1), le n°1 en couleur d'accent : vidéos « Top 5 », comparatifs, récap."}-->
+<style>
+.tp{position:absolute;left:6%;top:50%;transform:translateY(-50%);width:min(70%,calc(var(--u)*80))}
+.tp .t{font-weight:900;font-size:calc(var(--u)*4.4);margin-bottom:calc(var(--u)*1.6);text-shadow:0 2px 10px rgba(0,0,0,.6)}
+.tp .it{display:flex;align-items:center;gap:calc(var(--u)*1.6);padding:calc(var(--u)*1.2) calc(var(--u)*2);margin-top:calc(var(--u)*1);border-radius:calc(var(--u)*1.2);
+ background:rgba(11,15,26,.82);font-weight:800;font-size:calc(var(--u)*3)}
+.tp .it b{font-size:calc(var(--u)*3.6);width:calc(var(--u)*5);color:rgba(255,255,255,.55)}
+.tp .it.first{background:var(--accent);color:#0B0F1A}.tp .it.first b{color:#0B0F1A}
+</style>
+<template><div class="tp" id="tp"><div class="t">{{title}}</div></div></template>
+<script>
+const tp = document.getElementById("tp"), items = V.items.split(";");
+items.forEach((t, i) => { const d = document.createElement("div"); d.className = "it" + (i === 0 ? " first" : "");
+  d.innerHTML = `<b>${i + 1}</b><span></span>`; d.lastChild.textContent = t; tp.appendChild(d); });
+tl.from(".tp .t", { y: 20, opacity: 0, duration: .35 }, 0);
+const els = [...tp.querySelectorAll(".it")].reverse(), gap = Math.min(.9, (V.DUR - 1.6) / els.length);
+els.forEach((el, k) => tl.from(el, { x: -60, opacity: 0, duration: .35, ease: "power3.out" }, .5 + k * gap));
+tl.fromTo(".it.first", { scale: 1 }, { scale: 1.05, yoyo: true, repeat: 1, duration: .15 }, .5 + els.length * gap)
+  .to(".tp", { opacity: 0, duration: .35 }, V.DUR - .35);
+</script>

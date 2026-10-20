@@ -22,13 +22,14 @@ def peak_db(video):
 
 
 def cut_words(transcript, keep, tol=0.03):
-    """Mots tronqués par une coupe : la frontière d'un segment gardé tombe au milieu du mot."""
+    """Mots tronqués par une coupe : la frontière d'un segment gardé tombe au milieu du mot.
+    Horodatage approximatif (transcription importée, p < 1) : la frontière doit tomber franchement dans le mot."""
     out = []
     for w in (transcript or {}).get("words", []):
-        for s, e in keep:
-            for b in (s, e):
-                if w["start"] + tol < b < w["end"] - tol:
-                    out.append({"w": w["w"], "t": w["start"], "frontiere": b})
+        t = tol if w.get("p", 1) >= 1 else max(tol, 0.3 * (w["end"] - w["start"]))
+        hit = next((b for s, e in keep for b in (s, e) if w["start"] + t < b < w["end"] - t), None)
+        if hit is not None:
+            out.append({"w": w["w"], "t": w["start"], "frontiere": hit})
     return out
 
 

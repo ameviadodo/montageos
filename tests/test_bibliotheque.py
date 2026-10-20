@@ -102,3 +102,54 @@ class Bibliotheque(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Affinage(unittest.TestCase):
+    def test_decide(self):
+        from monteur.style_refine import decide
+        zone = {"found": True, "y": 0.62, "band": [0.6, 0.65], "size": 0.075, "max_words": 2,
+                "primary": "#FFFFFF", "accent": "#FFE600"}
+        out, rep = decide(["flash", "flash", "hard"], [{"kind": "punch", "scale": 1.15}] * 6, 30, zone)
+        self.assertEqual(out["cut"]["transition"], "flash")
+        self.assertEqual(out["zoom"]["every_s"], 5.0)
+        self.assertEqual(out["subtitles"]["position"], "center")
+        self.assertAlmostEqual(out["subtitles"]["margin_v"], 0.35)
+        self.assertEqual((out["subtitles"]["highlight"], out["subtitles"]["max_words"]), ("#FFE600", 2))
+        out, _ = decide(["whip", "glitch", "hard", "whip", "glitch"], [], 30, {"found": False})
+        self.assertEqual(out["cut"]["transition"], "mix")
+        self.assertNotIn("subtitles", out)  # sans sous-titres dans la référence, on garde ceux du style
+        out, _ = decide(["hard"] * 9 + ["dip"], [], 30, None)
+        self.assertEqual(out["cut"]["transition"], "hard")
+
+
+class TranscriptionImportee(unittest.TestCase):
+    def test_mots_hors_des_pauses(self):
+        from monteur.transcript_import import segments_to_words
+        w = segments_to_words([{"start": 0, "end": 4, "text": "un deux trois quatre"}], [(1.5, 2.5), (3.6, 5)])
+        for x in w:
+            self.assertFalse(1.5 < x["start"] < 2.5 or 1.5 < x["end"] < 2.5, x)  # rien dans la pause
+            self.assertLessEqual(x["end"], 3.6)
+        self.assertTrue(w[-1]["start"] >= 2.5)
+        self.assertEqual(segments_to_words([{"start": 0, "end": 2, "text": "vraiment ?"}])[0]["w"], "vraiment ?")
+
+    def test_remap_garde_le_mot_qui_deborde(self):
+        from monteur.cut import remap_transcript
+        tr = {"words": [{"w": "euh", "start": 0.1, "end": 0.3}, {"w": "bien.", "start": 1.0, "end": 1.6},
+                        {"w": "Alors", "start": 2.0, "end": 2.4}]}
+        out = remap_transcript(tr, [[0.0, 1.4], [2.0, 3.0]], removed=[0])
+        self.assertEqual([w["w"] for w in out["words"]], ["bien.", "Alors"])
+        self.assertAlmostEqual(out["words"][1]["start"], 1.4)
+
+    def test_verif_tolere_les_horodatages_approximatifs(self):
+        from monteur.verify import cut_words
+        keep = [[0, 1.05]]
+        self.assertEqual(cut_words({"words": [{"w": "x", "start": 0.6, "end": 1.1, "p": 0.9}]}, keep), [])
+        self.assertEqual(len(cut_words({"words": [{"w": "x", "start": 0.6, "end": 1.4, "p": 1.0}]}, keep)), 1)
+
+
+class Studio(unittest.TestCase):
+    def test_version_api_partagee_avec_la_page(self):
+        import re
+        from monteur.studio import API
+        html = (Path(__file__).resolve().parent.parent / "ui" / "index.html").read_text(encoding="utf-8")
+        self.assertEqual(int(re.search(r"const API_VERSION = (\d+)", html).group(1)), API)

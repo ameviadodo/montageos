@@ -1,0 +1,18 @@
+<!--meta {"label":"Question / réponse","category":"Engagement","mode":"overlay","duration":5,
+"vars":{"user":"@lea.mrt","question":"Ça marche aussi pour les débutants ?","answer":"Oui — voici comment"},"tags":["question","réponse","faq","commentaire","répondre","tiktok","q&a"],
+"usage":"Bulle de commentaire façon TikTok (« Réponse à @… »), puis la réponse qui s'écrit : idéal pour les vidéos réponse et les FAQ."}-->
+<style>
+.qa{position:absolute;left:6%;top:12%;max-width:72%;padding:calc(var(--u)*2) calc(var(--u)*2.6);border-radius:calc(var(--u)*1.8);background:#fff;color:#111;
+ box-shadow:0 calc(var(--u)*1) calc(var(--u)*4) rgba(0,0,0,.35)}
+.qa .u{font-size:calc(var(--u)*1.7);font-weight:700;color:#666}
+.qa .t{font-size:calc(var(--u)*3.2);font-weight:800;line-height:1.25;margin-top:calc(var(--u)*.6)}
+.qa:after{content:"";position:absolute;left:calc(var(--u)*3);bottom:calc(var(--u)*-1.4);border:calc(var(--u)*1.4) solid transparent;border-top-color:#fff;border-bottom:0}
+.an{position:absolute;left:6%;top:calc(12% + var(--u)*17);font-weight:900;font-size:calc(var(--u)*4.6);color:var(--accent);-webkit-text-stroke:calc(var(--u)*.3) #000;paint-order:stroke fill}
+</style>
+<template><div class="qa"><div class="u">Réponse à {{user}}</div><div class="t">{{question}}</div></div><div class="an"><span id="an"></span></div></template>
+<script>
+const an = document.getElementById("an");
+tl.from(".qa", { scale: .6, opacity: 0, transformOrigin: "left bottom", duration: .4, ease: "back.out(1.8)" }, 0);
+[...V.answer].forEach((ch, i) => tl.call(() => an.textContent = V.answer.slice(0, i + 1), null, 1.1 + i * .045));
+tl.to([".qa", ".an"], { opacity: 0, duration: .35 }, V.DUR - .35);
+</script>

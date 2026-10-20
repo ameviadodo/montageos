@@ -304,7 +304,12 @@ def cmd_studio(a):
 
 def cmd_style(a):
     from .style_clone import clone
-    clone(a.sources, a.name, a.transcribe, a.activer)
+    clone(a.sources, a.name, a.transcribe, a.activer, refine=not a.sans_affinage)
+
+
+def cmd_affiner(a):
+    from .style_refine import refine
+    refine(a.name)
 
 
 def cmd_sfx(a):
@@ -439,7 +444,11 @@ def main(argv=None):
     s.add_argument("--name", required=True)
     s.add_argument("--transcribe", action="store_true", help="mesure aussi le débit de parole")
     s.add_argument("--activer", action="store_true", help="active le style pour les nouveaux projets")
+    s.add_argument("--sans-affinage", action="store_true", help="saute l'analyse fine (cuts, zooms, sous-titres)")
     s.set_defaults(fn=cmd_style)
+    s = sub.add_parser("affiner", help="Affine un style copié : vrais types de cut, zooms, place/taille/couleurs des sous-titres")
+    s.add_argument("name")
+    s.set_defaults(fn=cmd_affiner)
     s = sub.add_parser("activer", help="Active un style : utilisé par défaut pour les nouveaux projets")
     s.add_argument("name")
     s.set_defaults(fn=cmd_activer)

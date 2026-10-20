@@ -9,5 +9,5 @@
   "broll": {"per_minute": 3, "duration": 2.0, "layout": "pip"},
   "motion": {"hook_title": false, "cta": {"text": "Lien en bio", "duration": 2.2}},
   "sfx": {"volume": 0.25, "on_zoom": {"punch": null, "pulse": null, "ease": null}},
-  "library": {"etat": "Prêt", "cards": ["avis.etoiles", "mot.punch", "medaillon.nom", "prix.promo"], "ratios": ["9:16", "4:5"]}
+  "library": {"etat": "Prêt", "cards": ["avis.etoiles", "mot.punch", "medaillon.nom", "prix.promo", "question.reponse", "sondage.choix"], "ratios": ["9:16", "4:5"]}
 }

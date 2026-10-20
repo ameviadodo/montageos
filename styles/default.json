@@ -113,7 +113,8 @@
       "titre.barre",
       "medaillon.nom",
       "surlignage.liste",
-      "stat.courbe"
+      "stat.courbe",
+      "sondage.choix"
     ],
     "ratios": [
       "9:16",

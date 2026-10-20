@@ -81,7 +81,7 @@ def build_subtitles(transcript, plan, style, w, h, out):
     words = [dict(x, idx=i) for i, x in enumerate(transcript["words"])]
     emph = set(plan.get("emphasis", []))
     emph_words = {x.lower() for x in plan.get("emphasis_words", [])}
-    hidden = [(b["start"], b["end"]) for b in plan.get("broll", []) if b.get("hide_subs")]
+    hidden = [(b["start"], b["end"]) for b in plan.get("broll", []) + plan.get("motion", []) if b.get("hide_subs")]
     if c.get("hide_during_title", True):
         hidden += [(m["start"], m["end"]) for m in plan.get("motion", []) if m.get("type") in ("title", "cta")]
     hi, em, pr = ass_color(c["highlight"]), ass_color(c["emphasis"]), ass_color(c["primary"])

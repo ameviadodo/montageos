@@ -9,5 +9,5 @@
   "broll": {"per_minute": 2, "duration": 4, "layout": "pip"},
   "motion": {"hook_title": false, "font": "Poppins ExtraBold", "accent": "#7CF2B6"},
   "sfx": {"volume": 0.25, "on_zoom": {"punch": "click", "pulse": "click", "ease": null}, "on_motion": "ding"},
-  "library": {"etat": "Prêt", "cards": ["programme.chapitres", "ecran.rail", "ecran.push3d", "surlignage.liste", "section.cercle"], "ratios": ["16:9", "1:1", "4:5"]}
+  "library": {"etat": "Prêt", "cards": ["programme.chapitres", "ecran.rail", "ecran.push3d", "surlignage.liste", "section.cercle", "question.reponse"], "ratios": ["16:9", "1:1", "4:5"]}
 }
