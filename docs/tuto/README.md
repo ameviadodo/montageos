@@ -8,6 +8,6 @@ Pour la régénérer après une évolution de l'interface :
 bin/monteur studio --root <dossier_de_démo> --port 8770 &
 PLAYWRIGHT=$(npm root -g)/playwright node docs/tuto/record.js http://127.0.0.1:8770 <dossier_tuto>/rec
 # intro / outro : cartes section.stage et citation.surligne (voir compose.py, attendu dans <dossier_tuto>/tuto.monteur/assets/motion/)
-.venv/bin/python docs/tuto/compose.py <dossier_tuto>      # → <dossier_tuto>/MonteurOS-tuto.mp4
+"$(. bin/_env.sh; echo "${MONTEUR_PY[0]}")" docs/tuto/compose.py <dossier_tuto>      # → <dossier_tuto>/MonteurOS-tuto.mp4
 ```
 `record.js` pilote le navigateur et affiche un curseur jaune visible ; il note dans `marks.json` le moment de chaque étape. `compose.py` cale le bandeau sur ces repères : il suffit de modifier la liste `STEPS` pour changer les textes.

@@ -21,6 +21,8 @@ bash setup.sh            # ffmpeg, Whisper, yt-dlp, polices, bruitages
 bash setup.sh --all      # + Hyperframes (Node ≥ 22) + Veo/Google Flow
 cp .env.example .env     # clés API facultatives
 ```
+**Windows** : ouvre **Git Bash** dans le dossier et lance les mêmes commandes. Le venv est créé dans `.venv\Scripts\` et détecté automatiquement. Depuis cmd ou PowerShell, utilise `bin\monteur.cmd`. Il faut Python 3.12 (`winget install Python.Python.3.12`) et ffmpeg (`winget install Gyan.FFmpeg`, installé tout seul par `setup.sh` s'il manque).
+Pour précharger ou tester le moteur de transcription : `bin/monteur whisper --model small`.
 Dans Claude Code, un hook de démarrage lance l'installation si elle manque, et Claude répare lui-même ce qui manque (skill `monteur-setup`).
 
 ## Utilisation avec Claude

@@ -160,7 +160,7 @@ def render_cut(video, edl, out, workdir):
         lines.append("".join(f"[v{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=0[vo]")
         maps = ["-map", "[vo]"]
     script = workdir / "cut_filter.txt"
-    script.write_text("\n".join(lines))
+    script.write_text("\n".join(lines), encoding="utf-8")
     ffmpeg(["-i", video, "-filter_complex_script", script, *maps, "-c:v", "libx264",
             "-preset", "fast", "-crf", "16", "-r", str(info["fps"]), "-c:a", "aac", "-b:a", "256k", out])
     log(f"Coupe : {edl['stats']['source_duration']}s → {edl['stats']['kept_duration']}s "

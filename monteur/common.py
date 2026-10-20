@@ -15,11 +15,16 @@ def log(msg):
     print(f"[monteur] {msg}", file=sys.stderr, flush=True)
 
 
+WINDOWS = os.name == "nt"
+
+
 def run(cmd, capture=False, check=True, cwd=None):
     cmd = [str(c) for c in cmd]
+    if WINDOWS:  # npx, npm… sont des .cmd : CreateProcess exige le chemin complet
+        cmd[0] = shutil.which(cmd[0]) or cmd[0]
     if os.environ.get("MONTEUR_DEBUG"):
         log("$ " + " ".join(cmd))
-    res = subprocess.run(cmd, capture_output=capture, text=True, cwd=cwd)
+    res = subprocess.run(cmd, capture_output=capture, text=True, encoding="utf-8", errors="replace", cwd=cwd)
     if check and res.returncode != 0:
         err = (res.stderr or "")[-3000:] if capture else ""
         raise RuntimeError(f"Commande échouée ({res.returncode}): {cmd[0]}\n{err}")
@@ -116,3 +121,12 @@ class Workspace:
 
 def which(binary):
     return shutil.which(binary) is not None
+
+
+def utf8_console():
+    """Console Windows (cp1252) : évite UnicodeEncodeError sur les ✅ / « » des messages."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass

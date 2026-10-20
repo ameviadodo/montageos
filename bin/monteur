@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Lanceur MonteurOS : utilise le venv local s'il existe.
-ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
-PY="$ROOT/.venv/bin/python"; [ -x "$PY" ] || PY=python3
-export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
-exec "$PY" -m monteur "$@"
+# Lanceur MonteurOS (Linux, macOS, Windows Git Bash) : utilise le Python du venv local s'il existe.
+ROOT="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/.." && pwd)"
+. "$ROOT/bin/_env.sh"
+if [ "${#MONTEUR_PY[@]}" -eq 0 ]; then
+  echo "[monteur] Aucun Python 3.9+ trouvé. Lance : bash \"$ROOT/setup.sh\"" >&2
+  exit 1
+fi
+exec "${MONTEUR_PY[@]}" -m monteur "$@"

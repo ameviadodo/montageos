@@ -25,7 +25,7 @@ def new(ws, name, resolution="landscape", example="blank"):
 def vendor_cdn(proj):
     """Copie GSAP en local : le rendu ne dépend plus du CDN (hors-ligne / proxy d'entreprise)."""
     html = proj / "index.html"
-    m = re.search(r"https://cdn\.jsdelivr\.net/npm/gsap@([\d.]+)/dist/gsap\.min\.js", html.read_text())
+    m = re.search(r"https://cdn\.jsdelivr\.net/npm/gsap@([\d.]+)/dist/gsap\.min\.js", html.read_text(encoding="utf-8"))
     if not m:
         return
     res = run(["npm", "install", "--silent", "--no-audit", "--no-fund", f"gsap@{m.group(1)}"], cwd=proj, check=False)
@@ -33,7 +33,7 @@ def vendor_cdn(proj):
     if res.returncode == 0 and src.exists():
         (proj / "vendor").mkdir(exist_ok=True)
         shutil.copy(src, proj / "vendor" / "gsap.min.js")
-        html.write_text(html.read_text().replace(m.group(0), "vendor/gsap.min.js"))
+        html.write_text(html.read_text(encoding="utf-8").replace(m.group(0), "vendor/gsap.min.js"), encoding="utf-8")
 
 
 def render(ws, name, start, end=None, alpha=True, layout=None, variables=None):

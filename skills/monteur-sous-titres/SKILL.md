@@ -30,7 +30,7 @@ Générés au rendu depuis `transcript_cut.json` → `RUSH.monteur/subtitles.ass
 
 ## Export .srt (si demandé)
 ```bash
-.venv/bin/python - <<'PY'
+"$(. bin/_env.sh; echo "${MONTEUR_PY[0]}")" - <<'PY'   # python du venv, Linux/macOS ou Windows
 import json;t=json.load(open("RUSH.monteur/transcript_cut.json"))["words"]
 f=lambda s:"%02d:%02d:%02d,%03d"%(s//3600,s%3600//60,s%60,s*1000%1000)
 out=[];g=[t[i:i+7] for i in range(0,len(t),7)]
