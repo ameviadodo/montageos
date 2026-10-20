@@ -3,7 +3,7 @@ import re
 import unicodedata
 from difflib import SequenceMatcher
 
-from .common import ffmpeg, log, probe, run, save_json
+from .common import ffmpeg_progress, log, probe, run, save_json
 
 
 def norm(word):
@@ -159,10 +159,15 @@ def render_cut(video, edl, out, workdir):
     else:
         lines.append("".join(f"[v{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=0[vo]")
         maps = ["-map", "[vo]"]
+    big = max(info["width"], info["height"]) > 1920  # rush 4K : le fichier de travail passe en 1080p
+    if big:
+        lines[-1] = lines[-1].replace("[vo]", "[vc]") + ";[vc]scale='if(gt(iw,ih),1920,-2)':'if(gt(iw,ih),-2,1920)'[vo]"
     script = workdir / "cut_filter.txt"
     script.write_text("\n".join(lines), encoding="utf-8")
-    ffmpeg(["-i", video, "-filter_complex_script", script, *maps, "-c:v", "libx264",
-            "-preset", "fast", "-crf", "16", "-r", str(info["fps"]), "-c:a", "aac", "-b:a", "256k", out])
+    kept = sum(e - s for s, e in edl["keep"])
+    ffmpeg_progress(["-i", video, "-filter_complex_script", script, *maps, "-c:v", "libx264",
+                     "-preset", "fast", "-crf", "16", "-r", str(info["fps"]), "-c:a", "aac", "-b:a", "256k", out],
+                    kept, "Coupe")
     log(f"Coupe : {edl['stats']['source_duration']}s → {edl['stats']['kept_duration']}s "
         f"({edl['stats']['segments']} segments) → {out}")
 

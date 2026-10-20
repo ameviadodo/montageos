@@ -124,7 +124,11 @@ def cmd_plan(a):
 
 def cmd_broll(a):
     from .broll import fetch
+    from .plan import auto_plan
     ws, style = get_ws(a)
+    if not ws.plan.exists():
+        log("Pas encore de plan de montage : création automatique (lance « Préparer » pour un plan complet).")
+        auto_plan(ws, style, ws.base_transcript())
     fetch(ws, portrait(ws, style))
 
 
@@ -197,12 +201,20 @@ def cmd_prep(a):
     from .cut import cut
     from .plan import auto_plan
     from .transcribe import transcribe
+    from .transcribe import NoWhisper
     ws, style = get_ws(a)
     has_audio = probe(ws.source)["has_audio"] and not silent(ws.source)
-    t = load_json(ws.transcript) if ws.transcript.exists() and not a.force else \
-        (transcribe(ws.source, ws.transcript, a.model, a.language) if has_audio else {"words": []})
-    if style["cut"].get("enabled", True) and not a.no_cut and t.get("words"):
-        edl = cut(ws, style, t)
+    no_whisper = False
+    try:
+        t = load_json(ws.transcript) if ws.transcript.exists() and not a.force else \
+            (transcribe(ws.source, ws.transcript, a.model, a.language) if has_audio else {"words": []})
+    except NoWhisper:
+        no_whisper, t = True, {"words": []}
+        log("⚠️  Whisper n'est pas installé : préparation sans transcription (coupe des silences, zooms, "
+            "pas de sous-titres ni de coupe des répétitions).")
+        log("   Pour l'activer : installe Python 3.12 (Windows : winget install Python.Python.3.12) puis bash setup.sh")
+    if style["cut"].get("enabled", True) and not a.no_cut and (t.get("words") or (no_whisper and has_audio)):
+        edl = cut(ws, style, t if t.get("words") else None)
     else:
         ws.cut_video.unlink(missing_ok=True)
         save_json(ws.transcript, t)

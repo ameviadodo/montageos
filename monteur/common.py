@@ -31,6 +31,29 @@ def run(cmd, capture=False, check=True, cwd=None):
     return res
 
 
+def ffmpeg_progress(args, duration, label, cwd=None, step=5):
+    """ffmpeg long (rendu, coupe) : affiche « label 35 % » toutes les `step` % pour le Studio et le terminal."""
+    cmd = ["ffmpeg", "-hide_banner", "-y", "-loglevel", "error", "-nostats", "-progress", "pipe:1", *[str(a) for a in args]]
+    if WINDOWS:
+        cmd[0] = shutil.which("ffmpeg") or "ffmpeg"
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                         errors="replace", cwd=cwd)
+    last = -step
+    for line in p.stdout:
+        if line.startswith("out_time_us=") and duration:
+            try:
+                pct = min(99, int(int(line.split("=")[1]) / 1e6 / duration * 100))
+            except ValueError:
+                continue
+            if pct >= last + step:
+                last = pct
+                log(f"{label} {pct} %")
+    err = p.stderr.read()
+    if p.wait() != 0:
+        raise RuntimeError(f"Commande échouée ({p.returncode}): ffmpeg\n{err[-3000:]}")
+    log(f"{label} 100 %")
+
+
 def ffmpeg(args, capture=False, cwd=None):
     return run(["ffmpeg", "-hide_banner", "-y", "-loglevel", "error", *args], capture=capture, cwd=cwd)
 

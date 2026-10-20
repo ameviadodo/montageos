@@ -183,7 +183,7 @@ const ago = ts => { if (!ts) return "—"; const d = Date.now() / 1000 - ts;
   return d < 60 ? "à l'instant" : d < 3600 ? `il y a ${Math.round(d / 60)} min` : d < 86400 ? `il y a ${Math.round(d / 3600)} h` : `il y a ${Math.round(d / 86400)} jours`; };
 const size = b => b > 1e9 ? (b / 1e9).toFixed(1) + " GB" : b > 1e6 ? (b / 1e6).toFixed(1) + " MB" : Math.round(b / 1e3) + " KB";
 const tc = t => { t = Math.max(0, t || 0); return `${String(Math.floor(t / 60)).padStart(2, "0")}:${(t % 60).toFixed(2).padStart(5, "0")}`; };
-const toast = m => { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2200); };
+const toast = m => { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), Math.max(2200, String(m).length * 55)); };
 const STATE = {last: null, job: null};
 const statusPill = s => `<span class="pill ${s === "prêt à relire" ? "ok" : s === "livré" ? "y" : ""}">${esc(s)}</span>`;
 
@@ -582,7 +582,7 @@ async function vActivite() {
     ${a.running.map(j => `<div class="panel"><div class="row"><span class="pill y">en cours</span><b>${esc(j.label)}</b><span class="mono muted">${esc(j.video || "")}</span></div><div class="log" id="joblog" style="margin-top:10px">…</div></div>`).join("")}
     <div class="tbl"><table><tr><th>Quand</th><th>Action</th><th>Projet</th><th>État</th><th>Durée</th><th>Dernières lignes</th></tr>
     ${a.items.map(i => `<tr><td class="mono muted" style="white-space:nowrap">${ago(i.started)}</td><td><b>${esc(i.label)}</b></td><td class="mono" style="font-size:12px">${esc(i.video || "")}</td>
-      <td>${i.status === "done" ? '<span class="pill ok">terminé</span>' : i.status === "error" ? '<span class="pill r">erreur</span>' : '<span class="pill y">en cours</span>'}</td>
+      <td>${i.status === "done" ? '<span class="pill ok">terminé</span>' : i.status === "error" ? '<span class="pill r">erreur</span>' : i.status === "interrupted" ? '<span class="pill">interrompu</span>' : '<span class="pill y">en cours</span>'}</td>
       <td class="mono muted">${i.ended ? (i.ended - i.started) + " s" : "—"}</td><td class="mono muted" style="font-size:11px;max-width:380px">${esc((i.tail || []).slice(-2).join(" · ").replace(/\[monteur\] /g, ""))}</td></tr>`).join("")
       || `<tr><td colspan="6" class="empty">Rien pour l'instant.</td></tr>`}</table></div>`;
 }
