@@ -3,14 +3,24 @@ import argparse
 import sys
 from pathlib import Path
 
-from .common import Workspace, load_json, load_style, log, probe, save_json, which
+from .common import Workspace, active_style, load_json, load_style, log, probe, save_json, which
+
+ASPECT_CHOICES = ["source", "9:16", "16:9", "1:1", "4:5", "3:4", "2:3", "21:9"]
+CUT_CHOICES = ["hard", "zoomcut", "flash", "dip", "whip", "glitch", "fondu", "mix"]
 
 
 def get_ws(a):
     ws = Workspace(a.video, getattr(a, "workdir", None))
-    style = load_style(a.style or load_json(ws.style, {}).get("name"))
+    style = load_style(a.style or load_json(ws.style, {}).get("name") or active_style())
     if a.style:
         save_json(ws.style, {"name": a.style})
+    if getattr(a, "cuts", None):
+        style["cut"]["transition"] = a.cuts
+        plan = load_json(ws.plan)
+        if plan is not None:  # le plan existant suit le nouveau type de cut
+            from .transitions import auto_transitions
+            plan["transitions"] = auto_transitions(ws, style, plan.get("duration"))
+            save_json(ws.plan, plan)
     if getattr(a, "music", None):
         style["audio"]["music"] = str(Path(a.music).resolve())
     if getattr(a, "aspect", None):
@@ -187,8 +197,11 @@ def cmd_projet(a):
 
 
 def cmd_cartes(a):
-    from .cards import catalog
-    for c in catalog():
+    from .cards import search
+    found = search(a.cherche, a.categorie)
+    if not found:
+        log(f"Aucune carte pour « {a.cherche} ».")
+    for c in found:
         print(f"{c['id']:<26} [{c['category']}] {c['label']} — {c.get('usage', '')}")
         print(f"{'':<26} vars : " + ", ".join(f"{k}={v!r}" for k, v in c.get("vars", {}).items()))
 
@@ -207,8 +220,10 @@ def cmd_carte(a):
 
 def cmd_avant_apres(a):
     from .layouts import avant_apres
+    from .render import ASPECTS
+    W, H = ASPECTS[a.aspect]
     avant_apres(a.apres, a.avant, a.out, a.title or "", a.subtitle or "", tuple(a.labels.split(",")),
-                "after" if a.audio == "apres" else "before")
+                "after" if a.audio == "apres" else "before", W, H)
 
 
 def cmd_prep(a):
@@ -254,7 +269,32 @@ def cmd_slideshow(a):
 
 def cmd_charte(a):
     from .charte import extract
-    extract(a.sources, a.name)
+    extract(a.sources, a.name, with_style=not a.sans_style)
+
+
+def cmd_activer(a):
+    from .common import STYLES, set_setting
+    if not (STYLES / f"{a.name}.json").exists():
+        raise SystemExit(f"Style inconnu : {a.name} (voir `monteur styles`)")
+    set_setting(style=a.name)
+    log(f"Style « {a.name} » activé : utilisé par défaut pour les nouveaux projets (sauf --style).")
+
+
+def cmd_styles(a):
+    from .common import STYLES
+    act = active_style()
+    for p in sorted(STYLES.glob("*.json")):
+        s = load_json(p)
+        lib = s.get("library", {})
+        print(f"{'●' if p.stem == act else ' '} {p.stem:<22} {s.get('format', {}).get('aspect', 'source'):<7} "
+              f"{lib.get('etat', ''):<9} {s.get('description', '')[:70]}")
+
+
+def cmd_cuts(a):
+    from .transitions import KINDS
+    for k, v in KINDS.items():
+        print(f"{k:<9} {v}")
+    print("\nbin/monteur render RUSH.mp4 --cuts mix   (ou « cut.transition » dans le style, « transitions » dans plan.json)")
 
 
 def cmd_studio(a):
@@ -264,7 +304,7 @@ def cmd_studio(a):
 
 def cmd_style(a):
     from .style_clone import clone
-    clone(a.sources, a.name, a.transcribe)
+    clone(a.sources, a.name, a.transcribe, a.activer)
 
 
 def cmd_sfx(a):
@@ -325,7 +365,8 @@ def main(argv=None):
         s.add_argument("video")
         s.add_argument("--style", "-s")
         s.add_argument("--workdir")
-        s.add_argument("--aspect", choices=["source", "9:16", "16:9", "1:1", "4:5"])
+        s.add_argument("--aspect", choices=ASPECT_CHOICES)
+        s.add_argument("--cuts", choices=CUT_CHOICES, help="type de cut entre les plans (voir `monteur cuts`)")
         s.set_defaults(fn=fn)
         return s
 
@@ -397,8 +438,17 @@ def main(argv=None):
     s.add_argument("sources", nargs="+")
     s.add_argument("--name", required=True)
     s.add_argument("--transcribe", action="store_true", help="mesure aussi le débit de parole")
+    s.add_argument("--activer", action="store_true", help="active le style pour les nouveaux projets")
     s.set_defaults(fn=cmd_style)
-    sub.add_parser("cartes", help="Catalogue des cartes animées").set_defaults(fn=cmd_cartes)
+    s = sub.add_parser("activer", help="Active un style : utilisé par défaut pour les nouveaux projets")
+    s.add_argument("name")
+    s.set_defaults(fn=cmd_activer)
+    sub.add_parser("styles", help="Liste les styles (bibliothèque) et le style actif").set_defaults(fn=cmd_styles)
+    sub.add_parser("cuts", help="Types de cut / transitions entre les plans").set_defaults(fn=cmd_cuts)
+    s = sub.add_parser("cartes", help="Catalogue des cartes animées (--cherche pour filtrer)")
+    s.add_argument("--cherche", "-q", help="mot-clé : chiffre, nom, liste, prix, avis…")
+    s.add_argument("--categorie")
+    s.set_defaults(fn=cmd_cartes)
     s = sub.add_parser("voix", help="Voix off française (Edge TTS en ligne, sinon espeak-ng + MBROLA)")
     s.add_argument("texte", nargs="?", default="")
     s.add_argument("--out", default="voix.wav", help="fichier WAV (ou dossier avec --fichier)")
@@ -416,17 +466,19 @@ def main(argv=None):
     s.add_argument("--subtitle")
     s.add_argument("--labels", default="Transformé,Originale")
     s.add_argument("--audio", choices=["apres", "avant"], default="apres")
+    s.add_argument("--aspect", choices=ASPECT_CHOICES[1:], default="9:16", help="16:9 / 1:1 : côte à côte")
     s.set_defaults(fn=cmd_avant_apres)
     s = sub.add_parser("slideshow", help="Vidéo produit à partir de photos (Ken Burns)")
     s.add_argument("images", nargs="+")
     s.add_argument("--out", required=True)
     s.add_argument("--per", type=float, default=2.5, help="secondes par image")
-    s.add_argument("--aspect", choices=["9:16", "16:9", "1:1", "4:5"])
+    s.add_argument("--aspect", choices=ASPECT_CHOICES[1:])
     s.add_argument("--audio", help="voix off ou musique")
     s.set_defaults(fn=cmd_slideshow)
     s = sub.add_parser("charte", help="Extrait une charte graphique (couleurs, typo) d'images/vidéos/URL → thème Studio")
     s.add_argument("sources", nargs="+")
     s.add_argument("--name", required=True)
+    s.add_argument("--sans-style", action="store_true", help="ne crée pas le style vidéo styles/<nom>.json")
     s.set_defaults(fn=cmd_charte)
     s = sub.add_parser("studio", help="Interface web MonteurOS Studio")
     s.add_argument("--port", type=int, default=8765)

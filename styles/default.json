@@ -25,7 +25,10 @@
       "uhm",
       "bah",
       "ben"
-    ]
+    ],
+    "transition": "hard",
+    "transition_every": 1,
+    "transition_gap": 1.2
   },
   "zoom": {
     "enabled": true,
@@ -41,7 +44,8 @@
     "hold_s": 2.2,
     "focus": "auto",
     "focus_x": 0.5,
-    "focus_y": 0.4
+    "focus_y": 0.4,
+    "cut_scale": 1.12
   },
   "subtitles": {
     "enabled": true,
@@ -78,7 +82,12 @@
       "ease": null
     },
     "on_broll": "swoosh",
-    "on_motion": "riser"
+    "on_motion": "riser",
+    "on_transition": {
+      "whip": "whoosh",
+      "glitch": "glitch",
+      "flash": "camera"
+    }
   },
   "motion": {
     "enabled": true,
@@ -97,5 +106,20 @@
     "crf": 18,
     "preset": "medium",
     "audio_bitrate": "192k"
+  },
+  "library": {
+    "etat": "Prêt",
+    "cards": [
+      "titre.barre",
+      "medaillon.nom",
+      "surlignage.liste",
+      "stat.courbe"
+    ],
+    "ratios": [
+      "9:16",
+      "16:9",
+      "1:1",
+      "4:5"
+    ]
   }
 }

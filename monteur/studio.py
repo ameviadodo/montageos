@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from .common import ASSETS, ROOT, STYLES, Workspace, load_json, log, save_json
+from .common import ASSETS, ROOT, STYLES, Workspace, active_style, load_json, log, save_json, set_setting
 
 UI = ROOT / "ui"
 LIB = ROOT / "library"
@@ -68,9 +68,12 @@ def style_entry(p):
     pal = lib.get("palette") or [c for c in (sub.get("primary"), sub.get("highlight"), sub.get("emphasis"),
                                              s.get("motion", {}).get("accent")) if c]
     fonts = lib.get("fonts") or {"display": s.get("motion", {}).get("font") or sub.get("font"), "body": sub.get("font")}
+    asp = s.get("format", {}).get("aspect", "source")
     return {"name": p.stem, "description": s.get("description", ""), "etat": lib.get("etat", "Prêt"),
             "palette": list(dict.fromkeys(pal)), "fonts": fonts, "cards": lib.get("cards", []),
-            "format": s.get("format", {}).get("aspect", "source"), "layout": s.get("format", {}).get("layout")}
+            "format": asp, "layout": s.get("format", {}).get("layout"),
+            "ratios": lib.get("ratios") or ([asp] if asp != "source" else []), "sources": lib.get("sources", []),
+            "cut": s.get("cut", {}).get("transition", "hard"), "active": p.stem == (active_style() or "default")}
 
 
 def library():
@@ -79,14 +82,17 @@ def library():
     for p in sorted((LIB / "formats").glob("*.md")):
         meta, _ = front_matter(p)
         ex = next(iter((LIB / "formats" / "exemples").glob(p.stem + ".*")), None) if (LIB / "formats" / "exemples").exists() else None
-        formats.append({**meta, "id": p.stem, "exemple": f"/file?path={ex}" if ex else None})
+        ratios = [r.strip() for r in meta.get("ratios", "9:16").split(",") if r.strip()]
+        formats.append({**meta, "id": p.stem, "ratios": ratios, "exemple": f"/file?path={ex}" if ex else None})
     charte = []
     for p in sorted((UI / "themes").glob("*.json")):
         t = load_json(p)
         charte.append({"name": p.stem, "colors": t.get("colors", {}), "fonts": t.get("fonts", {}),
                        "active": p.stem == theme_name(), "notes": t.get("layout_notes", "")})
+    from .render import ASPECTS
+    from .transitions import KINDS
     return {"formats": formats, "charte": charte, "references": [style_entry(p) for p in sorted(STYLES.glob("*.json"))],
-            "cards": catalog()}
+            "cards": catalog(), "aspects": list(ASPECTS), "cuts": KINDS, "active_style": active_style() or "default"}
 
 
 # ---------- activité / tâches ----------
@@ -184,7 +190,16 @@ class Handler(BaseHTTPRequestHandler):
             sfx = [{"t": e["t"], "name": Path(e["file"]).stem} for e in auto_events(load_json(ws.plan, {}), style)]
         except Exception:
             pass
-        return {**i, "dir": str(ws.dir), "plan": load_json(ws.plan), "edl": (load_json(ws.edl) or {}).get("stats"),
+        from .transitions import auto_transitions, cut_points
+        plan = load_json(ws.plan) or {}
+        try:
+            from .common import load_style
+            trans = plan.get("transitions")
+            if trans is None:
+                trans = auto_transitions(ws, load_style(i["style"]), plan.get("duration"))
+        except Exception:
+            trans = []
+        return {**i, "dir": str(ws.dir), "plan": load_json(ws.plan), "transitions": trans, "cut_points": cut_points(ws), "edl": (load_json(ws.edl) or {}).get("stats"),
                 "keep": (load_json(ws.edl) or {}).get("keep"), "transcript": tr, "files": files,
                 "review": review.load(ws), "verif": last_verif, "subs": subs, "sfx_events": sfx,
                 "styles": [p.stem for p in sorted(STYLES.glob("*.json"))]}
@@ -275,16 +290,57 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 left -= len(chunk)
 
+    def upload(self, q):
+        """Échantillon vidéo/image envoyé tel quel (corps binaire) → styles/refs/<nom>/uploads ou ui/themes/<nom>/uploads."""
+        from .style_clone import slug
+        name = slug(q.get("name") or "import")
+        base = (STYLES / "refs" / name) if q.get("kind") == "style" else (UI / "themes" / name)
+        fname = Path(unquote(q.get("filename") or "echantillon.mp4")).name
+        if Path(fname).suffix.lower() not in VIDEO_EXT | {".png", ".jpg", ".jpeg", ".webp"}:
+            return self.send(400, {"error": f"format non pris en charge : {fname}"})
+        dest = base / "uploads" / fname
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        left = int(self.headers.get("Content-Length", 0))
+        if left > 2 << 30:
+            return self.send(413, {"error": "fichier > 2 Go : coupe un extrait de 10 à 60 s"})
+        with open(dest, "wb") as f:
+            while left > 0 and (chunk := self.rfile.read(min(1 << 20, left))):
+                f.write(chunk)
+                left -= len(chunk)
+        return self.send(200, {"path": str(dest), "name": name, "size": dest.stat().st_size})
+
     def do_POST(self):
         u = urlparse(self.path)
+        if u.path == "/api/upload":
+            try:
+                return self.upload({k: v[0] for k, v in parse_qs(u.query).items()})
+            except Exception as e:
+                return self.send(400, {"error": f"{type(e).__name__}: {e}"})
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         try:
             if u.path == "/api/plan":
                 save_json(Workspace(self.video_path(body["video"])).plan, body["plan"])
                 return self.send(200, {"ok": True})
             if u.path == "/api/theme":
-                save_json(UI / "settings.json", {"theme": body["theme"]})
+                set_setting(theme=body["theme"])
                 return self.send(200, {"ok": True})
+            if u.path == "/api/style/activate":
+                if not (STYLES / f"{Path(body['name']).name}.json").exists():
+                    return self.send(404, {"error": "style inconnu"})
+                set_setting(style=Path(body["name"]).name)
+                return self.send(200, {"ok": True, "active": body["name"]})
+            if u.path == "/api/transitions":
+                from .common import load_style
+                from .transitions import KINDS, auto_transitions
+                ws = Workspace(self.video_path(body["video"]))
+                if body["kind"] not in KINDS:
+                    return self.send(400, {"error": "type de cut inconnu"})
+                style = load_style(load_json(ws.style, {}).get("name") or active_style())
+                style["cut"].update(transition=body["kind"], transition_every=int(body.get("every", 1)))
+                plan = load_json(ws.plan) or {}
+                plan["transitions"] = auto_transitions(ws, style, plan.get("duration"))
+                save_json(ws.plan, plan)
+                return self.send(200, {"transitions": plan["transitions"]})
             if u.path == "/api/review":
                 from . import review
                 ws = Workspace(self.video_path(body["video"]))
@@ -334,13 +390,20 @@ class Handler(BaseHTTPRequestHandler):
                                             "(suivi dans Activité) avant de lancer autre chose."})
         args = [act]
         if act in ("style", "charte"):
-            args += [*body["sources"], "--name", body["name"]]
+            sources = [x.strip() for x in body.get("sources", []) if x.strip()]
+            if not sources or not body.get("name"):
+                return self.send(400, {"error": "donne un nom et au moins un lien ou un fichier MP4"})
+            args += [*sources, "--name", body["name"]]
+            if act == "style" and body.get("activer"):
+                args.append("--activer")
         elif act != "doctor":
             args.append(str(self.video_path(body["video"])))
             if body.get("style") and act not in ("verif", "projet"):
                 args += ["--style", body["style"]]
             if body.get("aspect") and body["aspect"] != "source" and act not in ("verif", "projet", "carte"):
                 args += ["--aspect", body["aspect"]]
+            if body.get("cuts") and act in ("prep", "render", "plan"):
+                args += ["--cuts", body["cuts"]]
             if act == "prep" and body.get("force"):
                 args.append("--force")
             if act == "render" and body.get("draft"):

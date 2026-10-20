@@ -1,11 +1,13 @@
 {
-  "name": "ugc", "mode": "ugc",
+  "name": "ugc",
+  "mode": "ugc",
   "description": "UGC authentique (face cam smartphone) : coupe naturelle, sous-titres style TikTok natif, peu d'effets, B-roll produit en main.",
   "format": {"aspect": "9:16"},
-  "cut": {"min_silence": 0.35, "padding": 0.08, "remove_retakes": true},
+  "cut": {"min_silence": 0.35, "padding": 0.08, "remove_retakes": true, "transition": "zoomcut"},
   "zoom": {"every_s": 6, "scale": 1.08, "pattern": ["punch", "ease"]},
   "subtitles": {"font": "Montserrat Bold", "size": 0.055, "uppercase": false, "max_words": 4, "max_chars": 26, "highlight": "#FFFFFF", "emphasis": "#FFFFFF", "karaoke": false, "pop": true, "outline_w": 0.0, "shadow": 0, "position": "center", "margin_v": 0.3, "box": true},
   "broll": {"per_minute": 3, "duration": 2.0, "layout": "pip"},
   "motion": {"hook_title": false, "cta": {"text": "Lien en bio", "duration": 2.2}},
-  "sfx": {"volume": 0.25, "on_zoom": {"punch": null, "pulse": null, "ease": null}}
+  "sfx": {"volume": 0.25, "on_zoom": {"punch": null, "pulse": null, "ease": null}},
+  "library": {"etat": "Prêt", "cards": ["avis.etoiles", "mot.punch", "medaillon.nom", "prix.promo"], "ratios": ["9:16", "4:5"]}
 }

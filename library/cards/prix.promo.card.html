@@ -1,0 +1,22 @@
+<!--meta {"label":"Prix + promo","category":"Produit","mode":"overlay","duration":3.5,
+"vars":{"old":"49 €","price":"29 €","badge":"-40 %","caption":"Offre de lancement"},"tags":["pub","produit","prix","promo","réduction","e-commerce"],
+"usage":"Ancien prix barré, nouveau prix qui monte, pastille de réduction qui tourne : le moment « offre » d'une pub."}-->
+<style>
+.box{position:absolute;right:6%;top:50%;transform:translateY(-50%);padding:calc(var(--u)*3) calc(var(--u)*4);border-radius:calc(var(--u)*2);
+ background:rgba(11,15,26,.86);border:1px solid rgba(255,255,255,.1);text-align:right}
+.o{font-size:calc(var(--u)*3.4);opacity:.6;position:relative;display:inline-block}
+.o i{position:absolute;left:-4%;top:52%;width:108%;height:calc(var(--u)*.45);background:#FF3B30;transform-origin:left}
+.p{font-weight:900;font-size:calc(var(--u)*10);color:var(--accent);line-height:1}
+.c{font-size:calc(var(--u)*1.6);margin-top:calc(var(--u)*1)}
+.b{position:absolute;right:-6%;top:-18%;width:calc(var(--u)*11);height:calc(var(--u)*11);border-radius:50%;background:#FF3B30;color:#fff;
+ display:flex;align-items:center;justify-content:center;font-weight:900;font-size:calc(var(--u)*3)}
+</style>
+<template><div class="box"><div class="o">{{old}}<i></i></div><div class="p">{{price}}</div><div class="c mono">{{caption}}</div><div class="b">{{badge}}</div></div></template>
+<script>
+tl.from(".box", { x: 120, opacity: 0, duration: .45, ease: "power3.out" }, 0)
+  .from(".o i", { scaleX: 0, duration: .35, ease: "power2.inOut" }, .45)
+  .from(".p", { y: 40, opacity: 0, duration: .4, ease: "back.out(1.6)" }, .7)
+  .from(".b", { scale: 0, rotate: -120, duration: .5, ease: "back.out(2)" }, 1.0)
+  .from(".c", { opacity: 0, duration: .3 }, 1.1)
+  .to(".box", { x: 120, opacity: 0, duration: .35, ease: "power2.in" }, V.DUR - .35);
+</script>

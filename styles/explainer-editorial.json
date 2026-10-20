@@ -45,6 +45,9 @@
       "section.marqueurs",
       "citation.surligne",
       "stat.courbe"
+    ],
+    "ratios": [
+      "16:9"
     ]
   }
 }

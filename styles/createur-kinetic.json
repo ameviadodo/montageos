@@ -38,6 +38,9 @@
       "titre.barre",
       "ecran.rail",
       "programme.chapitres"
+    ],
+    "ratios": [
+      "9:16"
     ]
   }
 }

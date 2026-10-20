@@ -41,6 +41,12 @@
       "section.stage",
       "stat.courbe",
       "titre.barre"
+    ],
+    "ratios": [
+      "9:16",
+      "16:9",
+      "1:1",
+      "4:5"
     ]
   }
 }

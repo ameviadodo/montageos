@@ -4,6 +4,7 @@ nom: Recréer ce contenu viral
 etat: Exemple
 squelette: scaffold
 style: (copié)
+ratios: 9:16, 16:9, 1:1, 4:5, 21:9
 description: Comment recréer ce contenu viral.
 ---
 # Format 03 — Recréer ce contenu viral

@@ -1,0 +1,18 @@
+<!--meta {"label":"Intro logo / nom de chaîne","category":"Intros","mode":"full","duration":3,
+"vars":{"name":"MA CHAÎNE","tagline":"Épisode 12 — le guide complet","bg":"#0B0F1A"},"tags":["intro","youtube","logo","chaîne","ouverture","générique"],
+"usage":"Ouverture plein cadre : deux barres se croisent, le nom se révèle, l'accroche suit. 3 s pour une intro YouTube."}-->
+<style>
+.bg{position:absolute;inset:0;background:{{bg}}}
+.l1,.l2{position:absolute;left:0;width:100%;height:calc(var(--u)*1.2);background:var(--accent)}
+.l1{top:42%;transform-origin:left}.l2{top:58%;transform-origin:right}
+.n{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:900;font-size:calc(var(--u)*11);letter-spacing:.04em;white-space:nowrap;clip-path:inset(0 0 0 0)}
+.t{position:absolute;left:50%;top:66%;transform:translateX(-50%);font-size:calc(var(--u)*2);white-space:nowrap;opacity:.85}
+</style>
+<template><div class="bg"></div><div class="l1"></div><div class="l2"></div><div class="n">{{name}}</div><div class="t mono">{{tagline}}</div></template>
+<script>
+tl.from(".l1", { scaleX: 0, duration: .5, ease: "power3.inOut" }, 0).from(".l2", { scaleX: 0, duration: .5, ease: "power3.inOut" }, .1)
+  .fromTo(".n", { clipPath: "inset(0 50% 0 50%)" }, { clipPath: "inset(0 0% 0 0%)", duration: .6, ease: "power3.out" }, .45)
+  .from(".t", { y: 20, opacity: 0, duration: .4 }, .9)
+  .to([".l1", ".l2"], { scaleX: 0, duration: .4, ease: "power2.in" }, V.DUR - .6)
+  .to([".n", ".t"], { opacity: 0, duration: .3 }, V.DUR - .3);
+</script>

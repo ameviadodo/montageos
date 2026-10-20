@@ -93,8 +93,17 @@ td .nm{font-weight:800}td .ds{font-family:var(--font-mono);font-size:11px;color:
 .tbl{border:1px solid var(--surface2);border-radius:var(--radius);background:var(--surface);margin-bottom:20px;overflow:hidden}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:14px}
 .cv{border-radius:12px;overflow:hidden;border:1px solid var(--surface2);background:var(--bg)}
-.cv .vp{position:relative;aspect-ratio:16/9;overflow:hidden;background:repeating-conic-gradient(#0F1422 0 25%,#0B0F1A 0 50%) 0 0/24px 24px}
+.cv .vp{position:relative;aspect-ratio:16/9;overflow:hidden;background:repeating-conic-gradient(#0F1422 0 25%,#0B0F1A 0 50%) 0 0/24px 24px;max-height:420px;margin:0 auto}
 .cv iframe{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0;pointer-events:none}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font:700 12px var(--font-mono);padding:5px 11px;border-radius:99px;border:1px solid var(--surface2);background:transparent;cursor:pointer;color:var(--muted)}
+.chip.on{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+.rt{font:700 10px var(--font-mono);padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--muted);margin:0 4px 4px 0;display:inline-block}
+.addbox{display:grid;grid-template-columns:200px 1fr 1fr auto;gap:10px;align-items:start;padding:14px;border-bottom:1px solid var(--surface2);background:color-mix(in srgb,var(--accent) 4%,transparent)}
+.addbox textarea{min-height:42px;resize:vertical;width:100%}
+.addbox .drop{border:1px dashed var(--muted);border-radius:10px;padding:10px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer;display:block}
+.addbox .drop.on{border-color:var(--accent);color:var(--accent)}
+@media (max-width:900px){.addbox{grid-template-columns:1fr}}
 .cv .meta{padding:10px 12px}
 .cv code{font-family:var(--font-mono);font-size:12px;color:var(--accent)}
 .cv .meta a{display:inline-block;margin-top:8px;font-weight:700;font-size:13px;cursor:pointer}
@@ -135,6 +144,7 @@ td .nm{font-weight:800}td .ds{font-family:var(--font-mono);font-size:11px;color:
 .blk{position:absolute;top:3px;height:20px;border-radius:5px;font-size:10px;font-weight:800;line-height:20px;padding:0 6px;overflow:hidden;white-space:nowrap;cursor:pointer;color:var(--ink)}
 .blk.sub{background:var(--accent)}.blk.br{background:#7CC6FF}.blk.zm{background:#B794F6}.blk.an{background:#F59E0B}
 .blk.cut{background:var(--danger);opacity:.85;width:4px!important;padding:0}
+.blk.tr{background:#5EEAD4;width:auto!important;min-width:14px;padding:0 4px;transform:translateX(-50%)}
 .blk.fx{background:var(--surface);color:var(--muted);border:1px solid var(--surface2);border-radius:99px}
 .head{position:absolute;top:30px;bottom:0;width:2px;background:var(--accent);pointer-events:none;box-shadow:0 0 12px var(--accent)}
 .head:before{content:"";position:absolute;top:-6px;left:-5px;width:12px;height:8px;border-radius:2px;background:var(--accent)}
@@ -450,6 +460,7 @@ function drawTimeline() {
   let off = 0; const cuts = (p.keep || []).slice(0, -1).map(([s, e]) => (off += e - s));
   $("#tl").innerHTML = `<div class="hdr">MONTEUROS · MONTAGE EN COURS</div>
     <div class="trk"><span>VO · vidéo</span><div class="lane">${cuts.map(c => `<div class="blk cut" title="coupe à ${c.toFixed(2)}s" style="left:${pct(c)}"></div>`).join("")}</div></div>
+    <div class="trk"><span>CUT · raccords</span><div class="lane">${(P.transitions ?? p.transitions ?? []).map(x => `<div class="blk tr" title="${esc(x.kind)} à ${x.t.toFixed(2)}s" style="left:${pct(x.t)}">${esc({zoomcut: "Z", flash: "F", dip: "N", whip: "W", glitch: "G", fondu: "≈"}[x.kind] || "·")}</div>`).join("")}</div></div>
     <div class="trk"><span>TXT · sous-titres</span><div class="lane">${(p.subs || []).map(s => blk("sub", s.start, s.end, s.text)).join("")}</div></div>
     <div class="trk"><span>SFX · sons</span><div class="lane">${(p.sfx_events || []).map(s => blk("fx", s.t, s.t + .5, s.name)).join("")}</div></div>
     <div class="trk"><span>B-roll · illus</span><div class="lane">${P.broll.map((b, i) => blk("br", b.start, b.end, (b.file ? "" : "⏳ ") + b.query, `data-k="broll" data-i="${i}"`)).join("")}</div></div>
@@ -465,11 +476,19 @@ function drawInspector(lib) {
   if (!P) return box.innerHTML = "";
   const f = (sec, i, k, val, opts) => opts ? `<label>${k}</label><select data-f="${sec}.${i}.${k}">${opts.map(o => `<option ${o === val ? "selected" : ""}>${o}</option>`).join("")}</select>`
     : `<label>${k}</label><input data-f="${sec}.${i}.${k}" value="${esc(val ?? "")}">`;
+  const TR = P.transitions ?? STATE.p.transitions ?? [], kinds = new Set(TR.map(x => x.kind));
+  const curKind = !TR.length ? "hard" : kinds.size > 1 ? "mix" : TR[0].kind;
   box.innerHTML = `
     <div class="panel"><span class="cap acc">Poser une carte animée</span>
+      <input type="search" id="cardq" placeholder="Rechercher : prix, avis, chiffre, nom…" style="width:100%;margin-bottom:8px">
       <select id="cardsel" style="width:100%">${lib.cards.map(c => `<option value="${c.id}">${esc(c.category)} — ${esc(c.label)}</option>`).join("")}</select>
       <div id="cardvars"></div>
       <div class="row" style="margin-top:8px"><button class="btn" id="cardprev">Aperçu</button><button class="btn y" id="cardput">Poser à la tête de lecture</button></div></div>
+    <div class="panel"><span class="cap acc">Cuts entre les plans</span>
+      <div class="g2"><div><select id="cutk" style="width:100%">${Object.entries(lib.cuts || {}).map(([k, v]) => `<option value="${k}" ${k === curKind ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></div>
+        <div><select id="cute" style="width:100%"><option value="1">à chaque coupe</option><option value="2">une coupe sur 2</option><option value="3">une coupe sur 3</option></select></div></div>
+      <div class="muted" style="font-size:12px;margin-top:6px">${(STATE.p.cut_points || []).length} coupes · ${TR.length} raccords animés (piste CUT)</div>
+      <button class="btn" id="cutapply" style="margin-top:8px">Appliquer</button></div>
     <div class="panel"><span class="cap">Mots mis en valeur</span><input id="emw" style="width:100%" value="${esc((P.emphasis_words || []).join(", "))}"></div>
     <div class="cap" style="margin:4px 0 8px">Animations</div>
     ${P.motion.map((m, i) => `<div class="ent ${STATE.selI === "motion" + i ? "sel" : ""}"><span class="muted">${m.type} · ${m.start.toFixed(1)} → ${m.end.toFixed(1)}s</span>
@@ -483,6 +502,13 @@ function drawInspector(lib) {
   const drawVars = () => { const c = lib.cards.find(x => x.id === $("#cardsel").value);
     $("#cardvars").innerHTML = Object.entries(c.vars || {}).map(([k, v]) => `<label class="muted" style="font-size:11px;display:block;margin-top:6px">${k}</label><input data-cv="${k}" style="width:100%" value="${esc(v)}">`).join(""); };
   $("#cardsel").onchange = drawVars; drawVars();
+  $("#cardq").oninput = e => { const ok = new Set(searchCards(lib.cards, e.target.value, "").map(c => c.id));
+    $$("#cardsel option").forEach(o => o.hidden = !ok.has(o.value)); const first = $$("#cardsel option").find(o => !o.hidden);
+    if (first && $("#cardsel option:checked")?.hidden) { $("#cardsel").value = first.value; drawVars(); } };
+  $("#cutapply").onclick = async () => { await savePlan();
+    const r = await api("/api/transitions", {video: STATE.p.video, kind: $("#cutk").value, every: +$("#cute").value});
+    if (r.error) return toast(r.error);
+    P.transitions = r.transitions; drawTimeline(); drawInspector(lib); toast(`${r.transitions.length} raccords « ${$("#cutk").value} » — lance un rendu draft pour voir`); };
   const cardVals = () => Object.fromEntries($$("#cardvars [data-cv]").map(i => [i.dataset.cv, i.value]));
   $("#cardprev").onclick = () => openCard($("#cardsel").value, cardVals());
   $("#cardput").onclick = async () => { await savePlan(); run("carte", {video: STATE.p.video, card: $("#cardsel").value, start: +($("#sv").currentTime.toFixed(2)), vars: cardVals()}); };
@@ -493,40 +519,110 @@ function drawInspector(lib) {
 async function savePlan(notify) { if (!STATE.plan) return; await api("/api/plan", {video: STATE.p.video, plan: STATE.plan}); if (notify) toast("Plan enregistré"); }
 
 // ---------- Bibliothèques ----------
-function cardFrame(id, vars = {}) { return `/card?id=${encodeURIComponent(id)}&W=1920&H=1080&preview=1&vars=${encodeURIComponent(JSON.stringify(vars))}`; }
-function fitFrames(root = document) { $$(".cv .vp", root).forEach(vp => { const f = vp.querySelector("iframe"); if (f) f.style.transform = `scale(${vp.offsetWidth / 1920})`; }); }
+const RATIO = {"9:16": [1080, 1920], "16:9": [1920, 1080], "1:1": [1080, 1080], "4:5": [1080, 1350], "3:4": [1080, 1440], "2:3": [1080, 1620], "21:9": [2520, 1080]};
+const LIBF = {ratio: "", q: "", cat: ""};
+try { Object.assign(LIBF, JSON.parse(localStorage.getItem("monteur.libf") || "{}")); } catch (e) {}
+const saveLibf = () => { try { localStorage.setItem("monteur.libf", JSON.stringify(LIBF)); } catch (e) {} };
+const dims = () => RATIO[LIBF.ratio] || RATIO["16:9"];
+function cardFrame(id, vars = {}, [W, H] = dims()) { return `/card?id=${encodeURIComponent(id)}&W=${W}&H=${H}&preview=1&vars=${encodeURIComponent(JSON.stringify(vars))}`; }
+function fitFrames(root = document) { $$(".cv .vp", root).forEach(vp => { const f = vp.querySelector("iframe"); if (f) f.style.transform = `scale(${vp.offsetWidth / (+f.dataset.w || 1920)})`; }); }
 window.addEventListener("resize", () => { fitFrames(); fitModal(); });
 const sw = cols => `<span class="sw">${(cols || []).map(c => `<i style="background:${c}"></i>`).join("")}</span>`;
 const fontsCell = f => `<div class="fonts">${f.display ? `<div><b>DISPLAY</b>${esc(f.display)}</div>` : ""}${f.body ? `<div><b>BODY</b>${esc(f.body)}</div>` : ""}${f.mono ? `<div><b>MONO</b>${esc(f.mono)}</div>` : ""}</div>`;
-function cardTile(c, prefix = "") { return `<div class="cv"><div class="vp"><iframe loading="lazy" src="${cardFrame(c.id)}"></iframe></div>
+function cardTile(c, prefix = "") { const [W, H] = dims();
+  return `<div class="cv" data-card="${esc(c.id)}"><div class="vp" style="aspect-ratio:${W}/${H};max-width:${Math.round(Math.min(420, 300 * W / H))}px"><iframe loading="lazy" data-w="${W}" style="width:${W}px;height:${H}px" src="${cardFrame(c.id)}"></iframe></div>
   <div class="meta"><code>${esc(prefix + c.id)}</code><div class="muted" style="font-size:12px;margin-top:4px">${esc(c.usage || "")}</div><a data-open="${c.id}">Voir en grand</a></div></div>`; }
+const ratioChips = rs => (rs || []).map(r => `<span class="rt">${esc(r)}</span>`).join("");
+const matchRatio = rs => !LIBF.ratio || !(rs || []).length || rs.includes(LIBF.ratio);
+const norm = t => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+async function uploadFiles(files, kind, name) {
+  const out = [];
+  for (const f of files) {
+    toast(`Envoi de ${f.name} (${size(f.size)})…`);
+    const r = await fetch(`/api/upload?kind=${kind}&name=${encodeURIComponent(name)}&filename=${encodeURIComponent(f.name)}`, {method: "POST", body: f}).then(r => r.json());
+    if (r.error) { toast(r.error); return null; }
+    out.push(r.path);
+  }
+  return out;
+}
+function addBox(id, title, hint, button, extra = "") {
+  return `<div class="addbox" id="${id}"><div><b>${title}</b><div class="muted" style="font-size:12px;margin-top:4px">${hint}</div></div>
+    <div><input class="nm" placeholder="Nom (ex. mrbeast, ma-marque)" style="width:100%;margin-bottom:8px"><textarea class="links" placeholder="Liens YouTube, Shorts, TikTok, Instagram, Vimeo… (un par ligne)"></textarea></div>
+    <div><label class="drop">⬆ Glisse ou choisis des échantillons MP4 / captures<input type="file" class="files" accept="video/*,image/*" multiple hidden></label><div class="fl muted mono" style="font-size:11px;margin-top:6px"></div>${extra}</div>
+    <div><button class="btn y go">${button}</button></div></div>`;
+}
+function bindAddBox(id, kind, action, extra = () => ({})) {
+  const box = $("#" + id); if (!box) return; let files = [];
+  const show = () => box.querySelector(".fl").textContent = files.map(f => f.name).join(" · ");
+  const drop = box.querySelector(".drop");
+  box.querySelector(".files").onchange = e => { files = [...e.target.files]; show(); };
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add("on"); };
+  drop.ondragleave = () => drop.classList.remove("on");
+  drop.ondrop = e => { e.preventDefault(); drop.classList.remove("on"); files = [...e.dataTransfer.files]; show(); };
+  box.querySelector(".go").onclick = async () => {
+    const name = box.querySelector(".nm").value.trim(), links = box.querySelector(".links").value.split(/\s+/).filter(x => /^https?:\/\//.test(x));
+    if (!name) return toast("Donne un nom");
+    if (!links.length && !files.length) return toast("Ajoute au moins un lien ou un fichier MP4");
+    const up = files.length ? await uploadFiles(files, kind, name) : [];
+    if (up === null) return;
+    run(action, {sources: [...links, ...up], name, ...extra(box)}, () => { STATE.lib = null; vBiblio(); });
+  };
+}
 async function vBiblio() {
   const L = STATE.lib = await api("/api/library");
+  const cats = [...new Set(L.cards.map(c => c.category))];
   $("#view").innerHTML = `
     <div class="row" style="justify-content:space-between"><div><h1 class="page">Bibliothèques</h1>
       <p class="sub">Les formats de reel, la bibliothèque de styles et le registre des assets.</p></div>
       <div class="row"><a class="btn ghost" href="#cartes" id="tocards">Cartes animées</a><a class="btn ghost" href="#refs" id="torefs">Tous les styles</a></div></div>
+    <div class="chips" style="margin:0 0 16px"><span class="cap" style="margin-right:6px">Format</span>
+      ${["", ...L.aspects].map(r => `<button class="chip ${LIBF.ratio === r ? "on" : ""}" data-ratio="${r}">${r || "Tous"}</button>`).join("")}</div>
     <div class="tbl"><div class="sec-h"><span class="cap acc">Formats de reel</span><span class="cap">la structure d'un reel · <span class="acc">guide</span> · <span class="acc">mesures</span></span></div>
-      <table><tr><th>#</th><th>Format</th><th>État</th><th>Squelette</th><th>Style</th></tr>
-      ${L.formats.map(f => `<tr class="click" data-fmt="${f.id}"><td class="mono muted">${esc(f.numero)}</td><td><div class="nm">${esc(f.nom)}</div><div class="ds">${esc(f.description)}</div></td>
-        <td><b>${esc(f.etat)}</b></td><td class="mono">${esc(f.squelette)}</td><td class="mono muted">${esc(f.style)}</td></tr>`).join("")}</table></div>
+      <table><tr><th>#</th><th>Format</th><th>Ratios</th><th>État</th><th>Squelette</th><th>Style</th></tr>
+      ${L.formats.filter(f => matchRatio(f.ratios)).map(f => `<tr class="click" data-fmt="${f.id}"><td class="mono muted">${esc(f.numero)}</td><td><div class="nm">${esc(f.nom)}</div><div class="ds">${esc(f.description)}</div></td>
+        <td>${ratioChips(f.ratios)}</td><td><b>${esc(f.etat)}</b></td><td class="mono">${esc(f.squelette)}</td><td class="mono muted">${esc(f.style)}</td></tr>`).join("")
+        || `<tr><td colspan="6" class="empty">Aucun format en ${esc(LIBF.ratio)}.</td></tr>`}</table></div>
     <div class="tbl"><div class="sec-h"><span class="cap acc">Ta charte</span><span class="cap">thème de l'interface + identité des vidéos</span></div>
+      ${addBox("addcharte", "Ajouter une charte", "Depuis un lien vidéo, un petit extrait MP4 ou des captures : palette → thème du Studio + style vidéo assorti.", "Extraire la charte")}
       <table><tr><th>#</th><th>Nom</th><th>Palette</th><th>Polices</th><th></th></tr>
       ${L.charte.map((t, i) => `<tr><td class="mono muted">${String(i + 1).padStart(2, "0")}</td><td><span class="nm">${esc(t.name)}</span> ${t.active ? '<span class="pill y">TA CHARTE</span>' : ""}<div class="ds">${esc((t.notes || "").slice(0, 120))}</div></td>
         <td>${sw(Object.values(t.colors).slice(0, 7))}</td><td>${fontsCell(t.fonts)}</td><td>${t.active ? "" : `<button class="btn" data-theme="${t.name}">Activer</button>`}</td></tr>`).join("")}</table></div>
-    <div class="tbl" id="refs"><div class="sec-h"><span class="cap acc">Références</span><span class="cap">${L.references.length} styles · ${L.cards.length} cartes</span></div>
-      <table><tr><th>#</th><th>Nom</th><th>État</th><th>Cartes</th><th>Palette</th><th>Polices</th></tr>
-      ${L.references.map((s, i) => `<tr class="click" data-style="${s.name}"><td class="mono muted">${String(i + 1).padStart(2, "0")}</td>
-        <td><div class="nm">${esc(s.name)}</div><div class="ds">${esc(s.description).slice(0, 90)}</div></td>
-        <td><span class="pill ${s.etat === "Ta charte" ? "y" : ""}">${esc(s.etat)}</span></td><td class="mono">${s.cards.length} cartes</td>
-        <td>${sw(s.palette)}</td><td>${fontsCell(s.fonts)}</td></tr>`).join("")}</table></div>
-    <div class="tbl" id="cartes"><div class="sec-h"><span class="cap acc">Cartes animées</span><span class="cap">compositions Hyperframes · overlay transparent ou plein cadre</span></div>
-      ${groups(L.cards)}</div>`;
+    <div class="tbl" id="refs"><div class="sec-h"><span class="cap acc">Références</span><span class="cap">${L.references.length} styles · ${L.cards.length} cartes · actif : <span class="acc">${esc(L.active_style)}</span></span></div>
+      ${addBox("addstyle", "Cloner un style viral", "Colle les liens des vidéos qui cartonnent (ou dépose des MP4) : rythme, cuts, zooms, couleurs, sous-titres → un style prêt à l'emploi.", "Cloner le style",
+        `<label class="chk" style="display:block;margin-top:8px;font-size:13px"><input type="checkbox" class="act" checked> Activer après la copie</label>`)}
+      <table><tr><th>#</th><th>Nom</th><th>État</th><th>Ratios</th><th>Cut</th><th>Cartes</th><th>Palette</th><th>Polices</th><th></th></tr>
+      ${L.references.filter(s => matchRatio(s.ratios)).map((s, i) => `<tr class="click" data-style="${s.name}"><td class="mono muted">${String(i + 1).padStart(2, "0")}</td>
+        <td><div class="nm">${esc(s.name)} ${s.active ? '<span class="pill y">ACTIF</span>' : ""}</div><div class="ds">${esc(s.description).slice(0, 90)}</div></td>
+        <td><span class="pill ${s.etat === "Ta charte" ? "y" : s.etat === "Copié" ? "ok" : ""}">${esc(s.etat)}</span></td><td>${ratioChips(s.ratios)}</td>
+        <td class="mono muted" style="font-size:12px">${esc(s.cut)}</td><td class="mono" style="white-space:nowrap">${s.cards.length} cartes</td>
+        <td>${sw(s.palette)}</td><td>${fontsCell(s.fonts)}</td><td>${s.active ? "" : `<button class="btn" data-activate="${s.name}">Activer</button>`}</td></tr>`).join("")}</table></div>
+    <div class="tbl" id="cartes"><div class="sec-h"><span class="cap acc">Cartes animées</span><span class="cap">compositions Hyperframes · aperçu ${esc(LIBF.ratio || "16:9")}</span></div>
+      <div class="row" style="padding:14px 14px 0"><input type="search" id="cq" placeholder="Rechercher une carte : chiffre, prix, avis, nom, liste, intro, transition…" value="${esc(LIBF.q)}" style="flex:1;min-width:240px">
+        <span class="mono muted" id="ccount"></span></div>
+      <div class="chips" style="padding:10px 14px 0">${["", ...cats].map(c => `<button class="chip ${LIBF.cat === c ? "on" : ""}" data-cat="${esc(c)}">${esc(c || "Toutes")}</button>`).join("")}</div>
+      <div id="cgroups"></div></div>`;
   $$("[data-fmt]").forEach(r => r.onclick = () => location.hash = "#/format/" + r.dataset.fmt);
-  $$("[data-style]").forEach(r => r.onclick = () => location.hash = "#/style/" + r.dataset.style);
+  $$("[data-style]").forEach(r => r.onclick = e => { if (!e.target.closest("button")) location.hash = "#/style/" + r.dataset.style; });
   $$("[data-theme]").forEach(b => b.onclick = async () => { await api("/api/theme", {theme: b.dataset.theme}); $("#theme").href = "/theme.css?t=" + Date.now(); vBiblio(); });
+  $$("[data-activate]").forEach(b => b.onclick = async () => { const r = await api("/api/style/activate", {name: b.dataset.activate}); toast(r.error || `Style « ${b.dataset.activate} » activé pour les nouveaux projets`); vBiblio(); });
+  $$("[data-ratio]").forEach(b => b.onclick = () => { LIBF.ratio = b.dataset.ratio; saveLibf(); vBiblio(); });
+  $$("[data-cat]").forEach(b => b.onclick = () => { LIBF.cat = b.dataset.cat; saveLibf(); $$("[data-cat]").forEach(x => x.classList.toggle("on", x === b)); drawCards(L.cards); });
+  $("#cq").oninput = e => { LIBF.q = e.target.value; saveLibf(); clearTimeout($("#cq")._t); $("#cq")._t = setTimeout(() => drawCards(L.cards), 180); };
   $("#tocards").onclick = e => { e.preventDefault(); $("#cartes").scrollIntoView({behavior: "smooth"}); };
   $("#torefs").onclick = e => { e.preventDefault(); $("#refs").scrollIntoView({behavior: "smooth"}); };
+  bindAddBox("addcharte", "charte", "charte");
+  bindAddBox("addstyle", "style", "style", box => ({activer: box.querySelector(".act").checked}));
+  drawCards(L.cards);
+}
+function searchCards(cards, q = LIBF.q, cat = LIBF.cat) {
+  const words = norm(q).split(/\s+/).filter(Boolean);
+  return cards.filter(c => (!cat || c.category === cat) && words.every(w => norm([c.id, c.label, c.category, c.usage, ...(c.tags || []),
+    ...Object.entries(c.vars || {}).flat()].join(" ")).includes(w)));
+}
+function drawCards(cards) {
+  const found = searchCards(cards);
+  $("#ccount").textContent = `${found.length} / ${cards.length}`;
+  $("#cgroups").innerHTML = found.length ? groups(found) : `<div class="empty">Aucune carte pour « ${esc(LIBF.q)} ». Demande à Claude d'en créer une (skill monteur-bibliotheque).</div>`;
   bindCards(); fitFrames();
 }
 function groups(cards, prefix = "") {
@@ -542,7 +638,9 @@ function openCard(id, vars = {}) {
   STATE.card = [id, vars]; $("#mcode").textContent = id; $("#mframe").src = cardFrame(id, vars);
   $("#modal").classList.add("on"); fitModal();
 }
-function fitModal() { const st = $("#mstage"); if (st && st.offsetWidth) $("#mframe").style.transform = `scale(${st.offsetWidth / 1920})`; }
+function fitModal() { const st = $("#mstage"), f = $("#mframe"); if (!st) return; const [W, H] = dims();
+  st.style.aspectRatio = `${W}/${H}`; st.style.width = `min(100%, calc(76vh * ${W} / ${H}))`; st.style.margin = "0 auto";
+  f.style.width = W + "px"; f.style.height = H + "px"; if (st.offsetWidth) f.style.transform = `scale(${st.offsetWidth / W})`; }
 $("#mclose").onclick = () => { $("#modal").classList.remove("on"); $("#mframe").src = "about:blank"; };
 $("#mreplay").onclick = () => $("#mframe").src = cardFrame(...STATE.card);
 $("#mtab").onclick = () => window.open(cardFrame(...STATE.card), "_blank");
@@ -554,12 +652,14 @@ async function vStyle(name) {
     <h1 class="page" style="margin-top:6px">${esc(name)}</h1>
     <div class="row" style="justify-content:space-between;align-items:flex-start">
       <p class="sub" style="max-width:640px">${esc(s.description)}</p>
-      <div class="row"><button class="btn ghost" id="hidev">Masquer les variantes</button><button class="btn ghost" id="openall">Tout ouvrir</button><span class="mono muted">${s.cards.length} cartes</span></div></div>
+      <div class="row">${s.active ? '<span class="pill y">STYLE ACTIF</span>' : '<button class="btn y" id="activate">Activer ce style</button>'}<button class="btn ghost" id="hidev">Masquer les variantes</button><button class="btn ghost" id="openall">Tout ouvrir</button><span class="mono muted">${s.cards.length} cartes</span></div></div>
     <div class="row" style="margin-bottom:10px">${sw(s.palette)} ${fontsCell(s.fonts)}</div>
-    <div class="row muted mono" style="font-size:12px;margin-bottom:6px">format ${esc(s.format)}${s.layout ? " · layout " + esc(s.layout) : ""} · <span class="acc" style="color:var(--accent)">bin/monteur prep RUSH.mp4 --style ${esc(name)}</span></div>
+    ${s.sources.length ? `<div class="row muted" style="font-size:12px;margin-bottom:6px">Copié de : ${s.sources.map(u => /^https?:/.test(u) ? `<a href="${esc(u)}" target="_blank">${esc(u)}</a>` : `<span class="mono">${esc(u.split(/[\\/]/).pop())}</span>`).join(" · ")}</div>` : ""}
+    <div class="row muted mono" style="font-size:12px;margin-bottom:6px">format ${esc(s.format)} · ratios ${esc(s.ratios.join(", ") || "tous")} · cut ${esc(s.cut)}${s.layout ? " · layout " + esc(s.layout) : ""} · <span class="acc" style="color:var(--accent)">bin/monteur prep RUSH.mp4 --style ${esc(name)}</span></div>
     ${s.cards.length ? groups(s.cards, name + ".") : '<div class="empty">Aucune carte associée à ce style.</div>'}
     <details class="panel" style="margin-top:16px"><summary class="cap" style="cursor:pointer">Réglages (styles/${esc(name)}.json)</summary><pre class="log" style="max-height:420px">${esc(JSON.stringify(s.json, null, 2))}</pre></details>`;
   bindCards(); fitFrames();
+  $("#activate") && ($("#activate").onclick = async () => { await api("/api/style/activate", {name}); toast(`Style « ${name} » activé pour les nouveaux projets`); vStyle(name); });
   $("#hidev").onclick = () => $$(".cards").forEach(c => c.hidden = true);
   $("#openall").onclick = () => $$(".cards").forEach(c => c.hidden = false);
 }

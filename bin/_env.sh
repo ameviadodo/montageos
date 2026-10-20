@@ -50,5 +50,5 @@ elif _sp="$(monteur_find_python)"; then read -r -a MONTEUR_PY <<< "$_sp"; fi
 _pyroot="$ROOT"; _sep=":"
 if [ "$MONTEUR_WIN" = 1 ] && command -v cygpath >/dev/null 2>&1; then _pyroot="$(cygpath -w "$ROOT")"; _sep=";"; fi
 export PYTHONPATH="$_pyroot${PYTHONPATH:+$_sep$PYTHONPATH}"
-export PYTHONUTF8=1 PYTHONIOENCODING=utf-8 HF_HUB_DISABLE_SYMLINKS_WARNING=1
+export PYTHONUTF8=1 PYTHONIOENCODING=utf-8 HF_HUB_DISABLE_SYMLINKS_WARNING=1 HF_HUB_VERBOSITY=error
 unset _la _d _vp _sp _pyroot _sep

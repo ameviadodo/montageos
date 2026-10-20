@@ -120,7 +120,10 @@ def auto_plan(ws, style, transcript):
         plan["motion"].append({"start": round(dur - cta.get("duration", 2.5), 3), "end": round(dur, 3),
                                "type": "cta", "text": cta.get("text", "ABONNE-TOI"),
                                "subtext": cta.get("subtext", ""), "sfx": "ding"})
+    from .transitions import auto_transitions
+    plan["transitions"] = auto_transitions(ws, style, dur)
     plan["mode"] = style.get("mode", style.get("name"))
     save_json(ws.plan, plan)
-    log(f"Plan : {len(plan['zooms'])} zooms, {len(plan['broll'])} B-roll, {len(plan['motion'])} animations → {ws.plan}")
+    log(f"Plan : {len(plan['zooms'])} zooms, {len(plan['transitions'])} transitions, {len(plan['broll'])} B-roll, "
+        f"{len(plan['motion'])} animations → {ws.plan}")
     return plan

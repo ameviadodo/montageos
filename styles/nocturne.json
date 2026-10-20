@@ -44,6 +44,12 @@
       "titre.barre",
       "programme.chapitres",
       "citation.surligne"
+    ],
+    "ratios": [
+      "9:16",
+      "16:9",
+      "1:1",
+      "4:5"
     ]
   }
 }

@@ -18,6 +18,7 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 |---|---|
 | `monteur/transcribe.py` | Whisper mot à mot |
 | `monteur/cut.py` | silences, fillers, n-grammes répétés, prises ratées → `edl.json`, `cut.mp4` |
+| `monteur/transitions.py` | types de cut entre les plans (zoom cut, flash, noir, whip, glitch, fondu, mix) |
 | `monteur/plan.py` | plan auto (zooms, B-roll, titre, CTA, emphases) |
 | `monteur/broll.py` | Pexels / Pixabay / Wikimedia |
 | `monteur/generate.py` | Magnific, Veo, `attach` (Higgsfield via MCP) |
@@ -32,5 +33,5 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 | `monteur/review.py` | retours frame par frame (`review/feedback.json`) |
 | `monteur/project.py` | état projet, versions `renders/`, rendus périmés, miniatures |
 | `monteur/cards.py`, `library/cards/` | cartes animées Hyperframes paramétrables |
-| `monteur/layouts.py`, `library/formats/` | formats de reel (Avant/après ; Split carte dans `render.py`) |
+| `monteur/layouts.py`, `library/formats/` | formats de reel multi-ratios (Avant/après ; Split carte dans `render.py`) |
 | `monteur/studio.py`, `ui/index.html` | MonteurOS Studio : Projets · Studio · Bibliothèques · Activité |

@@ -6,7 +6,8 @@
     "aspect": "9:16"
   },
   "cut": {
-    "enabled": false
+    "enabled": false,
+    "transition": "flash"
   },
   "zoom": {
     "every_s": 2.0,
@@ -49,5 +50,20 @@
   "audio": {
     "music_volume": 0.5,
     "duck": true
+  },
+  "library": {
+    "etat": "Prêt",
+    "cards": [
+      "prix.promo",
+      "ecran.push3d",
+      "stat.courbe",
+      "avis.etoiles"
+    ],
+    "ratios": [
+      "9:16",
+      "1:1",
+      "4:5",
+      "16:9"
+    ]
   }
 }

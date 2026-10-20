@@ -4,6 +4,7 @@ import statistics
 from pathlib import Path
 
 from .common import STYLES, ffmpeg, load_json, log, probe, run, save_json, deep_merge
+from .render import aspect_of
 
 
 def download(url, dest_dir):
@@ -67,6 +68,28 @@ def sheets(video, out_dir, dur):
     return sorted(str(p) for p in out_dir.glob("*.png"))
 
 
+def colors(video):
+    """Couleurs vives dominantes (accents des titres / sous-titres), via la palette de charte.py."""
+    from .charte import dedupe, lum, palette, sat, to_hex
+    try:
+        cols = dedupe(palette(video, 16))
+    except Exception:
+        return []
+    vivid = sorted((c for c in cols if sat(c) > 0.35), key=sat, reverse=True)
+    # lisibles en sous-titres sur l'image (jaune, vert, cyan, rose…) d'abord ; bleu nuit / rouge sombre ensuite
+    return [to_hex(c) for c in sorted(vivid, key=lambda c: lum(c) < 110)[:4]]
+
+
+def pick_cards(cpm, aspect):
+    """Cartes de la bibliothèque adaptées au rythme mesuré (à affiner par Claude après lecture des planches)."""
+    if cpm >= 30:
+        return ["mot.punch", "titre.barre", "surlignage.liste", "stat.courbe"]
+    if cpm >= 12:
+        return ["titre.barre", "ecran.rail", "medaillon.nom", "stat.courbe"]
+    return ["section.marqueurs", "citation.surligne", "medaillon.nom", "doc.lieu-date"] if aspect in ("16:9", "21:9") \
+        else ["section.stage", "citation.surligne", "medaillon.nom"]
+
+
 def analyze(video, out_dir, transcribe_words=False):
     info = probe(video)
     dur = info["duration"]
@@ -75,7 +98,7 @@ def analyze(video, out_dir, transcribe_words=False):
     prof = {
         "source": str(video), "duration": round(dur, 2),
         "width": info.get("width"), "height": info.get("height"), "fps": info.get("fps"),
-        "aspect": "9:16" if info["height"] > info["width"] else ("1:1" if info["height"] == info["width"] else "16:9"),
+        "aspect": aspect_of(info["width"], info["height"]),
         "cuts_per_minute": round(len(cuts) / dur * 60, 1) if dur else 0,
         "avg_shot_s": round(statistics.mean(shots), 2) if shots else dur,
         "median_shot_s": round(statistics.median(shots), 2) if shots else dur,
@@ -88,6 +111,9 @@ def analyze(video, out_dir, transcribe_words=False):
         t = transcribe(video, out_dir / "transcript.json")
         prof["words_per_minute"] = round(len(t["words"]) / dur * 60) if dur else None
     prof["sheets"] = sheets(video, out_dir, dur)
+    prof["colors"] = colors(video)
+    meta = load_json(Path(video).with_suffix(".meta.json"), {})
+    prof["title"], prof["url"] = meta.get("title") or Path(video).stem, meta.get("webpage_url")
     save_json(out_dir / "profile.json", prof)
     return prof
 
@@ -97,26 +123,49 @@ def profile_to_style(profiles, name):
     avg = lambda k: statistics.mean([p[k] for p in profiles if p.get(k) is not None] or [0])
     shot, cpm, sil = avg("avg_shot_s"), avg("cuts_per_minute"), avg("silence_ratio")
     aspects = [p["aspect"] for p in profiles]
+    aspect = max(set(aspects), key=aspects.count)
+    accents = [c for p in profiles for c in p.get("colors", [])]
+    accent = accents[0] if accents else "#FFD400"
+    second = accents[1] if len(accents) > 1 else "#00E676"
+    titles = ", ".join(f"« {p.get('title')} »" for p in profiles[:3])
     style = {
         "name": name,
-        "description": f"Style copié depuis {len(profiles)} référence(s).",
+        "description": f"Style copié de {titles} : {cpm:.0f} coupes/min, plans de {shot:.1f} s en moyenne.",
+        "library": {"etat": "Copié", "palette": list(dict.fromkeys(["#000000", "#FFFFFF", *accents[:4]])),
+                    "fonts": {"display": "Montserrat Black", "body": "Montserrat ExtraBold"},
+                    "cards": pick_cards(cpm, aspect), "ratios": sorted(set(aspects)),
+                    "sources": [p.get("url") or p["source"] for p in profiles]},
         "reference": {"profiles": [p["source"] for p in profiles], "cuts_per_minute": round(cpm, 1),
                       "avg_shot_s": round(shot, 2), "silence_ratio": round(sil, 3)},
-        "format": {"aspect": max(set(aspects), key=aspects.count)},
+        "format": {"aspect": aspect},
         "cut": {"min_silence": 0.25 if sil < 0.05 else 0.4 if sil < 0.12 else 0.7,
-                "padding": 0.05 if sil < 0.05 else 0.1},
+                "padding": 0.05 if sil < 0.05 else 0.1,
+                "transition": "mix" if cpm >= 30 else "zoomcut" if cpm >= 15 else "hard"},
+        "subtitles": {"highlight": accent, "emphasis": second, "uppercase": cpm >= 15,
+                      "max_words": 2 if cpm >= 30 else 3 if cpm >= 12 else 5},
+        "motion": {"accent": accent},
         "zoom": {"every_s": round(min(12, max(2, shot * 1.1)), 1),
                  "pattern": ["punch", "pulse"] if shot < 3 else ["punch", "pulse", "ease"] if shot < 6 else ["ease"]},
         "broll": {"per_minute": round(min(10, max(1, cpm / 3)), 1),
                   "duration": round(min(4, max(1.2, shot * 0.8)), 1)},
         "audio": {"lufs": round(avg("lufs"), 1) if avg("lufs") else -14},
-        "_todo_claude": "Regarde contact_sheet.png / burst.png / frame_*.png et remplis subtitles "
-                        "(font, size, couleurs, uppercase, max_words, position), motion et sfx.",
+        "_todo_claude": "Regarde contact_sheet.png / burst.png / frame_*.png et affine subtitles "
+                        "(font, size, couleurs, uppercase, max_words, position), cut.transition (flash, whip, glitch…), "
+                        "motion, sfx et library.cards.",
     }
     return style
 
 
-def clone(sources, name, transcribe_words=False):
+def slug(name):
+    import unicodedata
+    s = unicodedata.normalize("NFD", name.lower())
+    s = re.sub(r"[^a-z0-9]+", "-", "".join(c for c in s if unicodedata.category(c) != "Mn")).strip("-")
+    return s or "style-copie"
+
+
+def clone(sources, name, transcribe_words=False, activate=False):
+    """Télécharge/analyse les références → styles/<nom>.json, rangé dans la bibliothèque (état « Copié »)."""
+    name = slug(name)
     base = STYLES / "refs" / name
     profiles = []
     for src in sources:
@@ -130,7 +179,13 @@ def clone(sources, name, transcribe_words=False):
     existing = load_json(STYLES / f"{name}.json")
     if existing:  # ne pas écraser ce que Claude a déjà affiné
         style = deep_merge(style, {k: v for k, v in existing.items() if k in ("subtitles", "motion", "sfx")})
+        old = existing.get("library", {})
+        style["library"].update({k: old[k] for k in ("cards", "fonts", "etat") if k in old})
     save_json(STYLES / f"{name}.json", style)
+    if activate:
+        from .common import set_setting
+        set_setting(style=name)
+        log(f"Style « {name} » activé pour les nouveaux projets.")
     log(f"Style « {name} » → styles/{name}.json ; planches à analyser :")
     for p in profiles:
         for s in p["sheets"]:
