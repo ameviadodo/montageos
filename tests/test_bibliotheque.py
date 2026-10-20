@@ -229,3 +229,33 @@ class Historique(unittest.TestCase):
             save_json(ws.plan, {"a": 2})
             history.undo(ws)  # cut.mp4 identique (même fichier) : pas d'erreur SameFileError
             self.assertEqual(json.loads(ws.plan.read_text()), {"a": 1})
+
+
+class Retouches(unittest.TestCase):
+    def test_couper_decale_le_plan(self):
+        from monteur.retouche import shift_plan
+        plan = {"duration": 20, "zooms": [{"start": 1, "end": 2}, {"start": 5.2, "end": 5.6}, {"start": 8, "end": 9}],
+                "motion": [{"start": 4, "end": 7, "type": "hyperframes"}], "broll": [],
+                "transitions": [{"t": 5.5, "kind": "flash"}, {"t": 10, "kind": "whip"}], "sfx": [{"t": 12, "name": "pop"}]}
+        out = shift_plan(plan, 5, 6)
+        self.assertEqual([(z["start"], z["end"]) for z in out["zooms"]], [(1, 2), (7, 8)])  # celui dans la coupe disparaît
+        self.assertEqual((out["motion"][0]["start"], out["motion"][0]["end"]), (4, 6))      # à cheval : raccourci
+        self.assertEqual([x["t"] for x in out["transitions"]], [9])
+        self.assertEqual(out["sfx"][0]["t"], 11)
+        self.assertEqual(out["duration"], 19)
+
+    def test_zoom_retire_bruitage(self):
+        from monteur import retouche as R
+        with tempfile.TemporaryDirectory() as d:
+            rush = Path(d) / "r.mp4"
+            rush.write_bytes(b"")
+            ws = Workspace(rush)
+            save_json(ws.plan, {"duration": 10, "zooms": [], "broll": [{"start": 3, "end": 5, "query": "x"}],
+                                "motion": [{"start": 2.5, "end": 4, "type": "hyperframes", "name": "carte"}]})
+            R.zoom(ws, 6)
+            R.sfx(ws, 6, "ding")
+            gone = R.remove(ws, 3.5)
+            plan = json.loads(ws.plan.read_text())
+            self.assertEqual((plan["zooms"][0]["start"], plan["sfx"][0]["name"]), (6, "ding"))
+            self.assertEqual((plan["broll"], plan["motion"]), ([], []))
+            self.assertEqual(len(gone), 2)
