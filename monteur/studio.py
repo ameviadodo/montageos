@@ -17,8 +17,16 @@ from .common import ASSETS, ROOT, STYLES, Workspace, active_style, load_json, lo
 UI = ROOT / "ui"
 LIB = ROOT / "library"
 VIDEO_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v"}
-ACTIONS = {"prep", "render", "broll", "cut", "plan", "style", "charte", "doctor", "transcribe", "verif", "carte", "projet"}
+ACTIONS = {"affiner", "prep", "render", "broll", "cut", "plan", "style", "charte", "doctor", "transcribe", "verif", "carte", "projet"}
 JOBS = {}
+API = 3  # à incrémenter quand ui/index.html attend de nouveaux champs : la page détecte un Studio pas redémarré
+
+
+def code_stamp():
+    return max(p.stat().st_mtime for p in (ROOT / "monteur").glob("*.py"))
+
+
+STARTED_CODE = code_stamp()
 ACTIVITY = UI / "activity.json"
 _lock = threading.Lock()
 
@@ -216,7 +224,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_file((ASSETS / "fonts" / Path(unquote(u.path)).name).resolve())
             if u.path == "/api/state":
                 vids = self.videos()
-                return self.send(200, {"root": str(self.root), "theme": theme_name(), "count": len(vids),
+                return self.send(200, {"root": str(self.root), "theme": theme_name(), "count": len(vids), "api": API,
+                                       "outdated": code_stamp() > STARTED_CODE + 1,
                                        "themes": sorted(p.stem for p in (UI / "themes").glob("*.json"))})
             if u.path == "/api/projects":
                 ps = self.projects()
@@ -241,7 +250,14 @@ class Handler(BaseHTTPRequestHandler):
                 from .cards import catalog
                 cards = {c["id"]: c for c in catalog()}
                 e = style_entry(p)
-                return self.send(200, {**e, "json": load_json(p), "cards": [cards[c] for c in e["cards"] if c in cards]})
+                refs = STYLES / "refs" / p.stem
+                order = {"affinage": 0, "contact_sheet": 1, "burst": 2}
+                sheets = sorted(refs.glob("*/*.png"), key=lambda x: (x.parent.name, order.get(x.stem, 3), x.name)) if refs.exists() else []
+                js = load_json(p) or {}
+                return self.send(200, {**e, "json": js, "cards": [cards[c] for c in e["cards"] if c in cards],
+                                       "sheets": [{"name": f"{x.parent.name}/{x.name}", "url": f"/file?path={x}"} for x in sheets],
+                                       "affinage": js.get("reference", {}).get("affinage"),
+                                       "refinable": bool(refs.exists() and any(refs.glob("*/profile.json")))})
             if u.path == "/card":
                 from .cards import build
                 vals = json.loads(q.get("vars") or "{}")
@@ -372,6 +388,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, {"words": len(data["words"])})
             if u.path == "/api/run":
                 return self.run_action(body)
+            if u.path == "/api/restart":
+                if any(j["status"] == "running" for j in JOBS.values()):
+                    return self.send(409, {"error": "une tâche est en cours : attends la fin avant de redémarrer"})
+                self.send(200, {"ok": True})
+                threading.Thread(target=restart, args=(self.server,), daemon=True).start()
+                return
             self.send(404, {"error": "introuvable"})
         except Exception as e:
             self.send(400, {"error": f"{type(e).__name__}: {e}"})
@@ -380,7 +402,7 @@ class Handler(BaseHTTPRequestHandler):
         act = body["action"]
         if act not in ACTIONS:
             return self.send(400, {"error": f"action interdite : {act}"})
-        labels = {"prep": "Préparation", "render": "Rendu master", "broll": "Recherche B-roll", "verif": "Vérification",
+        labels = {"affiner": "Affinage du style", "prep": "Préparation", "render": "Rendu master", "broll": "Recherche B-roll", "verif": "Vérification",
                   "style": "Copie de style", "charte": "Extraction de charte", "carte": "Carte animée",
                   "projet": "Mise à jour projet", "doctor": "Diagnostic"}
         label = labels.get(act, act)
@@ -389,7 +411,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(409, {"error": f"« {busy[0]['label']} » est déjà en cours sur ce projet : attends la fin "
                                             "(suivi dans Activité) avant de lancer autre chose."})
         args = [act]
-        if act in ("style", "charte"):
+        if act == "affiner":
+            args.append(Path(body["name"]).name)
+        elif act in ("style", "charte"):
             sources = [x.strip() for x in body.get("sources", []) if x.strip()]
             if not sources or not body.get("name"):
                 return self.send(400, {"error": "donne un nom et au moins un lien ou un fichier MP4"})
@@ -428,12 +452,28 @@ def close_stale_jobs():
         save_json(ACTIVITY, items)
 
 
+def restart(srv):
+    """Arrête la boucle HTTP ; serve() relance ensuite le Studio avec le code à jour (même port, mêmes options)."""
+    time.sleep(0.3)
+    srv.restart = True
+    srv.shutdown()
+
+
 def serve(port=8765, root="."):
     close_stale_jobs()
     Handler.root = Path(root).resolve()
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     log(f"MonteurOS Studio → http://127.0.0.1:{port}  (rushs : {Handler.root})")
+    srv.restart = False
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
         pass
+    if srv.restart:
+        srv.server_close()
+        log("Code mis à jour : redémarrage du Studio…")
+        cmd = [sys.executable, "-m", "monteur", *sys.argv[1:]]
+        if os.name == "nt":  # execv Windows coupe les chemins avec espaces : on relance puis on quitte
+            subprocess.Popen(cmd)
+            os._exit(0)
+        os.execv(sys.executable, cmd)

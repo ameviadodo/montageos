@@ -37,7 +37,9 @@
       "surlignage.liste",
       "titre.barre",
       "ecran.rail",
-      "programme.chapitres"
+      "programme.chapitres",
+      "classement.top",
+      "sondage.choix"
     ],
     "ratios": [
       "9:16"

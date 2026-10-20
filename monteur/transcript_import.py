@@ -83,22 +83,53 @@ def parse_json(src):
     return segs
 
 
-def segments_to_words(segs):
+def _speech(start, end, silences):
+    """Intervalles parlés de [start, end] : le segment moins les blancs détectés dans l'audio."""
+    out, t = [], start
+    for a, b in silences:
+        if b <= t or a >= end:
+            continue
+        if a > t + 0.05:
+            out.append((t, a))
+        t = max(t, b)
+    if end > t + 0.05:
+        out.append((t, end))
+    return out or [(start, end)]
+
+
+def _place(pos, spans):
+    """Position « parlée » (secondes cumulées) → temps réel dans les intervalles."""
+    for a, b in spans:
+        if pos <= b - a:
+            return a + pos
+        pos -= b - a
+    return spans[-1][1]
+
+
+def segments_to_words(segs, silences=None):
     words = []
     for s in segs:
         if s.get("words") and all(w.get("start") is not None for w in s["words"]):
             words += [{"w": w["w"], "start": round(w["start"], 3), "end": round(w["end"] or w["start"] + .3, 3), "p": 1.0}
                       for w in s["words"] if w["w"]]
             continue
-        toks = s["text"].split()
+        toks = []
+        for tok in s["text"].split():  # « vraiment ? » : la ponctuation isolée rejoint le mot précédent
+            if toks and re.fullmatch(r"[?!:;»…%]+", tok):
+                toks[-1] += "\u202f" + tok if tok[0] in "?!:;»%" else tok
+            else:
+                toks.append(tok)
         if not toks:
             continue
         start, end = s["start"], s["end"] if s.get("end") and s["end"] > s["start"] else s["start"] + .35 * len(toks)
         weights = [len(t) + 2 for t in toks]
-        span, t = end - start, start
+        spans = _speech(start, end, silences or [])  # les mots ne tombent pas dans les pauses
+        span, t = sum(b - a for a, b in spans), 0.0
         for tok, wgt in zip(toks, weights):
             d = span * wgt / sum(weights)
-            words.append({"w": tok, "start": round(t, 3), "end": round(t + d * 0.92, 3), "p": 0.9})
+            a, b = _place(t + 1e-6, spans), _place(t + d * 0.92, spans)
+            b = min(b, next((e for s0, e in spans if s0 - 1e-6 <= a <= e), b))  # un mot n'enjambe pas une pause
+            words.append({"w": tok, "start": round(a, 3), "end": round(max(b, a + 0.05), 3), "p": 0.9})
             t += d
     words.sort(key=lambda w: w["start"])
     return words
@@ -127,7 +158,15 @@ def load(path):
 
 def import_transcript(ws, path, language="fr"):
     """Écrit <rush>.monteur/transcript.json ; les fichiers dérivés de l'ancienne transcription sont écartés."""
-    words = segments_to_words(load(path))
+    silences = []
+    try:  # cale les mots sur la voix réelle (pauses en fin de phrase, virgules)
+        from .common import probe
+        if probe(ws.source)["has_audio"]:
+            from .cut import detect_silences
+            silences = detect_silences(ws.source, -35, 0.12)
+    except Exception:
+        pass
+    words = segments_to_words(load(path), silences)
     for derived in (ws.cut_video, ws.cut_transcript):
         Path(derived).unlink(missing_ok=True)
     if ws.plan.exists():  # le plan dépendait de l'ancienne transcription : on le garde de côté

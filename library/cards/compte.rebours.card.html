@@ -1,0 +1,22 @@
+<!--meta {"label":"Compte à rebours","category":"Données","mode":"overlay","duration":4,
+"vars":{"from":"3","label":"Offre terminée dans","end":"GO !"},"tags":["compte à rebours","countdown","urgence","lancement","timer","pub"],
+"usage":"Chiffres qui défilent 3-2-1 dans un anneau qui se vide, puis le mot final claque : urgence, lancement, révélation."}-->
+<style>
+.cd{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(var(--u)*34);height:calc(var(--u)*34)}
+.cd svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.cd .n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:calc(var(--u)*15);color:var(--ink)}
+.lab{position:absolute;left:50%;top:calc(50% - var(--u)*23);transform:translateX(-50%);white-space:nowrap;font-size:calc(var(--u)*2.2);color:var(--accent)}
+.bgc{position:absolute;inset:0;border-radius:50%;background:rgba(11,15,26,.78)}
+</style>
+<template><div class="lab mono">{{label}}</div><div class="cd"><div class="bgc"></div><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="6"/>
+<circle id="ring" cx="50" cy="50" r="44" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round"/></svg><div class="n" id="n">{{from}}</div></div></template>
+<script>
+const N = Math.max(1, Math.min(9, parseInt(V.from) || 3)), C = 2 * Math.PI * 44, ring = document.getElementById("ring"), el = document.getElementById("n");
+const step = (V.DUR - 1.2) / N;
+gsap.set(ring, { strokeDasharray: C, strokeDashoffset: 0 });
+tl.from([".cd", ".lab"], { scale: .7, opacity: 0, duration: .3, ease: "back.out(2)" }, 0)
+  .to(ring, { strokeDashoffset: C, duration: step * N, ease: "none" }, .3);
+for (let i = 0; i < N; i++) tl.call(() => el.textContent = N - i, null, .3 + i * step).fromTo(el, { scale: 1.4 }, { scale: 1, duration: .25, immediateRender: false }, .3 + i * step);
+tl.call(() => el.textContent = V.end, null, .3 + N * step).fromTo(el, { scale: 1.8, opacity: 0 }, { scale: 1, opacity: 1, duration: .3, ease: "back.out(2)", immediateRender: false }, .3 + N * step)
+  .to([".cd", ".lab"], { opacity: 0, duration: .3 }, V.DUR - .3);
+</script>

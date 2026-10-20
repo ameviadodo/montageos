@@ -96,6 +96,9 @@ td .nm{font-weight:800}td .ds{font-family:var(--font-mono);font-size:11px;color:
 .cv .vp{position:relative;aspect-ratio:16/9;overflow:hidden;background:repeating-conic-gradient(#0F1422 0 25%,#0B0F1A 0 50%) 0 0/24px 24px;max-height:420px;margin:0 auto}
 .cv iframe{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0;pointer-events:none}
 .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.sheets{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px}
+.sheets a{display:block;text-decoration:none;border:1px solid var(--surface2);border-radius:10px;overflow:hidden;background:var(--bg)}
+.sheets img{display:block;width:100%;height:140px;object-fit:cover}.sheets span{display:block;font-size:10px;padding:6px 8px;color:var(--muted)}
 .chip{font:700 12px var(--font-mono);padding:5px 11px;border-radius:99px;border:1px solid var(--surface2);background:transparent;cursor:pointer;color:var(--muted)}
 .chip.on{background:var(--accent);color:var(--ink);border-color:var(--accent)}
 .rt{font:700 10px var(--font-mono);padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--muted);margin:0 4px 4px 0;display:inline-block}
@@ -225,7 +228,36 @@ async function route() {
   const V = {projets: vProjets, projet: vProjet, retours: vRetours, studio: vStudio, bibliotheques: vBiblio,
              style: vStyle, format: vFormat, activite: vActivite}[view] || vProjets;
   window.scrollTo(0, 0);
-  await V(arg);
+  checkServer();
+  try { await V(arg); }
+  catch (e) {
+    console.error(e);
+    $("#view").innerHTML = `<div class="panel" style="border-color:var(--danger)"><span class="cap" style="color:var(--danger)">Cette page n'a pas pu s'afficher</span>
+      <p class="mono" style="font-size:12px">${esc(e.message || e)}</p>
+      <p class="muted">Après une mise à jour (<code>git pull</code>), le Studio doit être redémarré : bouton ci-dessous, ou Ctrl+C dans le terminal puis <code>bin/monteur studio</code>.</p>
+      <div class="row"><button class="btn y" id="rst2">Redémarrer le Studio</button><button class="btn" onclick="location.reload()">Recharger la page</button></div></div>`;
+    $("#rst2").onclick = restartServer;
+  }
+}
+const API_VERSION = 3;
+async function checkServer() {
+  let st; try { st = await api("/api/state"); } catch (e) { return; }
+  const old = (st.api || 0) < API_VERSION || st.outdated;
+  let bar = $("#upd");
+  if (!old) return bar && bar.remove();
+  if (bar) return;
+  bar = document.createElement("div"); bar.id = "upd"; bar.className = "panel";
+  bar.style.cssText = "margin:12px 22px 0;border-color:var(--accent);display:flex;gap:12px;align-items:center;flex-wrap:wrap";
+  bar.innerHTML = `<b>MonteurOS a été mis à jour.</b><span class="muted">Le Studio tourne encore avec l'ancienne version : redémarre-le pour tout voir.</span><button class="btn y" id="rst">Redémarrer le Studio</button>`;
+  $("header").after(bar); $("#rst").onclick = restartServer;
+}
+async function restartServer() {
+  const r = await api("/api/restart", {}).catch(() => ({error: "Studio ancien : Ctrl+C dans le terminal, puis bin/monteur studio"}));
+  if (r.error) return toast(r.error === "introuvable" ? "Ce Studio est trop ancien pour se relancer seul : Ctrl+C dans le terminal, puis bin/monteur studio" : r.error);
+  toast("Redémarrage du Studio…");
+  for (let i = 0; i < 40; i++) { await new Promise(ok => setTimeout(ok, 500));
+    try { const st = await fetch("/api/state").then(x => x.json()); if (st.api >= API_VERSION) return location.reload(); } catch (e) {} }
+  toast("Le Studio ne répond pas : relance bin/monteur studio dans le terminal");
 }
 window.addEventListener("hashchange", route);
 $("#refresh").onclick = () => { route(); toast("Actualisé"); };
@@ -570,6 +602,10 @@ function bindAddBox(id, kind, action, extra = () => ({})) {
 }
 async function vBiblio() {
   const L = STATE.lib = await api("/api/library");
+  if (L.error) throw new Error(L.error);
+  L.aspects = L.aspects || Object.keys(RATIO); L.cuts = L.cuts || {}; L.active_style = L.active_style || "default";
+  L.formats.forEach(f => f.ratios = f.ratios || ["9:16"]);
+  L.references.forEach(r => { r.ratios = r.ratios || []; r.sources = r.sources || []; r.cut = r.cut || "hard"; });
   const cats = [...new Set(L.cards.map(c => c.category))];
   $("#view").innerHTML = `
     <div class="row" style="justify-content:space-between"><div><h1 class="page">Bibliothèques</h1>
@@ -656,12 +692,32 @@ async function vStyle(name) {
     <div class="row" style="margin-bottom:10px">${sw(s.palette)} ${fontsCell(s.fonts)}</div>
     ${s.sources.length ? `<div class="row muted" style="font-size:12px;margin-bottom:6px">Copié de : ${s.sources.map(u => /^https?:/.test(u) ? `<a href="${esc(u)}" target="_blank">${esc(u)}</a>` : `<span class="mono">${esc(u.split(/[\\/]/).pop())}</span>`).join(" · ")}</div>` : ""}
     <div class="row muted mono" style="font-size:12px;margin-bottom:6px">format ${esc(s.format)} · ratios ${esc(s.ratios.join(", ") || "tous")} · cut ${esc(s.cut)}${s.layout ? " · layout " + esc(s.layout) : ""} · <span class="acc" style="color:var(--accent)">bin/monteur prep RUSH.mp4 --style ${esc(name)}</span></div>
+    ${s.refinable || s.affinage ? `<div class="panel" style="margin-top:14px"><div class="row" style="justify-content:space-between"><span class="cap acc">Affinage du style copié</span>
+        <div class="row">${s.refinable ? '<button class="btn y" id="refine">Affiner automatiquement</button>' : ""}<button class="btn" id="askclaude">⧉ Copier pour Claude</button></div></div>
+      ${s.affinage ? refineReport(s.affinage) : '<p class="muted">Pas encore affiné : MonteurOS va mesurer les vrais types de cut, les zooms et la place, la taille et les couleurs des sous-titres de la référence.</p>'}
+      ${s.sheets.length ? `<div class="sheets">${s.sheets.map(x => `<a href="${x.url}" target="_blank" title="${esc(x.name)}"><img loading="lazy" src="${x.url}"><span class="mono">${esc(x.name)}</span></a>`).join("")}</div>` : ""}
+      <div class="log" id="joblog" style="margin-top:10px;display:none"></div></div>` : ""}
     ${s.cards.length ? groups(s.cards, name + ".") : '<div class="empty">Aucune carte associée à ce style.</div>'}
     <details class="panel" style="margin-top:16px"><summary class="cap" style="cursor:pointer">Réglages (styles/${esc(name)}.json)</summary><pre class="log" style="max-height:420px">${esc(JSON.stringify(s.json, null, 2))}</pre></details>`;
   bindCards(); fitFrames();
+  $("#refine") && ($("#refine").onclick = () => { $("#joblog").style.display = "block"; run("affiner", {name}, () => vStyle(name)); });
+  $("#askclaude") && ($("#askclaude").onclick = async () => {
+    const txt = `Affine le style MonteurOS « ${name} » (skill monteur-copie-style) : regarde les planches de styles/refs/${name}/ ` +
+      `(affinage.png = bande des sous-titres détectée, contact_sheet.png, burst.png, frame_*.png), vérifie styles/${name}.json ` +
+      `(police exacte, majuscules, cartouche, couleurs, cut.transition, zooms, cartes de la bibliothèque) et corrige ce qui ne colle pas.` +
+      (s.affinage ? `\nMesures auto : ${JSON.stringify(s.affinage)}` : "");
+    try { await navigator.clipboard.writeText(txt); toast("Copié : colle-le dans Claude"); } catch (e) { prompt("Copie ce texte pour Claude :", txt); } });
   $("#activate") && ($("#activate").onclick = async () => { await api("/api/style/activate", {name}); toast(`Style « ${name} » activé pour les nouveaux projets`); vStyle(name); });
   $("#hidev").onclick = () => $$(".cards").forEach(c => c.hidden = true);
   $("#openall").onclick = () => $$(".cards").forEach(c => c.hidden = false);
+}
+function refineReport(a) {
+  const st = a.sous_titres || {}, cuts = a.coupes || {};
+  const rows = [["Coupes", Object.entries(cuts).map(([k, v]) => `${k} × ${v}`).join(" · ") || "—"],
+    ["Zooms", a.zooms_par_minute != null ? `${a.zooms_par_minute} / min` : "—"],
+    ["Sous-titres", st.found ? `bande ${Math.round(st.band[0] * 100)}–${Math.round(st.band[1] * 100)} % de la hauteur · taille ${st.size} · ${st.max_words || "?"} mots / bloc` : "aucun sous-titre incrusté détecté (ceux du style sont gardés)"],
+    ["Couleurs", st.found ? `${sw([st.primary, st.accent].filter(Boolean))} ${esc(st.primary || "")} ${st.accent && st.accent !== st.primary ? "+ " + esc(st.accent) : ""}` : "—"]];
+  return `<table style="margin:8px 0">${rows.map(([k, v]) => `<tr><td class="cap" style="width:140px">${k}</td><td>${v}</td></tr>`).join("")}</table>`;
 }
 function md(src) {
   const blocks = src.split(/```(?:\w+)?\n([\s\S]*?)```/g);

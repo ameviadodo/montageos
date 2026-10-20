@@ -57,7 +57,9 @@
       "prix.promo",
       "ecran.push3d",
       "stat.courbe",
-      "avis.etoiles"
+      "avis.etoiles",
+      "comparatif.tableau",
+      "compte.rebours"
     ],
     "ratios": [
       "9:16",

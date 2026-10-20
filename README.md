@@ -79,7 +79,11 @@ bin/monteur styles                                                  # bibliothè
 bin/monteur charte "https://youtu.be/YYYY" extrait.mp4 --name ma-marque
 bin/monteur cartes --cherche prix
 bin/monteur render rush.mp4 --aspect 4:5 --cuts mix --draft
+bin/monteur affiner viral                                           # vrais cuts, zooms, sous-titres de la référence
 ```
+
+> **Après un `git pull`**, redémarre le Studio (Ctrl+C puis `bin/monteur studio`) — ou clique sur le bandeau
+> « MonteurOS a été mis à jour → Redémarrer le Studio » qui apparaît tout seul.
 
 ## Architecture
 - `skills/` : 13 skills Claude (un chef d'orchestre et 12 métiers). Le dossier sert aussi de plugin (`.claude-plugin/`) et de skills de projet (`.claude/skills`).

@@ -17,6 +17,9 @@ Tout est visible dans le Studio → **Bibliothèques** (aperçus animés, « Voi
 | 05 | **Carré feed** (1:1) | `--style pub --aspect 1:1 --cuts zoomcut` |
 | 06 | **Portrait feed** (4:5, 3:4, 2:3) | `--style ugc --aspect 4:5`, cartes `avis.etoiles`, `prix.promo` |
 | 07 | **Tuto écran + facecam** (16:9, 9:16) | `--style formation`, captures en B-roll `full` ou `pip` |
+| 08 | **Comparatif produit** (9:16, 4:5, 1:1, 16:9) | `--style produit`, cartes `comparatif.tableau`, `prix.promo`, `compte.rebours` |
+| 09 | **Vidéo réponse / FAQ** (9:16, 4:5) | `--style ugc`, cartes `question.reponse`, `sondage.choix` |
+| 10 | **Top / classement** (9:16, 16:9, 1:1) | `--style createur-kinetic --cuts whip`, carte `classement.top` |
 Lis le `.md` du format (structure, mesures) avant de monter. Chaque format déclare ses `ratios:` (front matter) ;
 le Studio les filtre avec les pastilles **Format**. Tout style se rend dans n'importe quel ratio avec `--aspect`
 (`9:16 16:9 1:1 4:5 3:4 2:3 21:9`) ; Split carte passe en côte à côte (panneau à droite) en paysage, Avant/après aussi.
@@ -27,11 +30,14 @@ bin/monteur cartes                                   # catalogue + variables
 bin/monteur cartes --cherche "avis"                  # recherche (id, nom, catégorie, usage, tags, variables ; sans accents)
 bin/monteur carte RUSH.mp4 stat.courbe --start 12.4 --set value=125 --set suffix=K --set unit=abonnés
 ```
+Cartes « engagement / vente » : `compte.rebours` (3-2-1 + mot final), `sondage.choix` (A/B + %), `question.reponse` (bulle « Réponse à @… »),
+`comparatif.tableau` (nous vs les autres, ✓/✕ ; variables `rows`, `l_marks`, `r_marks` séparées par `;`), `classement.top` (du dernier au n°1).
+Pendant une carte chargée, `"hide_subs": true` sur l'entrée `motion` masque les sous-titres.
 → composition Hyperframes remplie, rendue (MOV transparent si overlay, MP4 si plein cadre), ajoutée à `plan.motion`.
 Règles : une carte toutes les 4–8 s max, texte ≤ 8 mots par ligne, couleur `accent` = celle de la charte, jamais pendant le hook si un titre est déjà là.
 
 ### Créer une carte
-Copie une carte existante : en-tête `<!--meta {label, category, mode: overlay|full, duration, vars, tags, usage}-->` (`tags` = mots de recherche), puis `<style>`, `<template>` (HTML, variables `{{clé|défaut}}`), `<script>` (timeline GSAP `tl`, valeurs dans `V`, durée `V.DUR`). Unité : `var(--u)` = 1 % du petit côté. Règles Hyperframes : pas de `Math.random`/`Date.now`, tout est seekable. Vérifie l'aperçu dans le Studio, puis un rendu test.
+Copie une carte existante : en-tête `<!--meta {label, category, mode: overlay|full, duration, vars, tags, usage}-->` (`tags` = mots de recherche), puis `<style>`, `<template>` (HTML, variables `{{clé|défaut}}`), `<script>` (timeline GSAP `tl`, valeurs dans `V`, durée `V.DUR`). Unité : `var(--u)` = 1 % du petit côté. Règles Hyperframes : pas de `Math.random`/`Date.now`, tout est seekable (Hyperframes rend image par image avec `seek(t, false)` : les `tl.call` passent ; mets `immediateRender: false` sur un `fromTo` placé tard dans la timeline, sinon l'élément reste invisible jusque-là). Vérifie l'aperçu dans le Studio, puis un rendu test.
 
 ## Références (`styles/*.json` → bloc `library`)
 `etat` (Prêt, Draft, Copié, Charte…), `palette`, `fonts {display, body, mono}`, `cards` (ids de cartes associées — **chaque style doit en avoir**, vérifié par les tests), `ratios`, `sources` (liens des vidéos copiées). Le style `nocturne` porte la charte relevée sur la vidéo de référence (bleu nuit, jaune #FFD935, serif italique, mono capitales).

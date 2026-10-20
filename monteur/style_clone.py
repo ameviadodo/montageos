@@ -163,7 +163,7 @@ def slug(name):
     return s or "style-copie"
 
 
-def clone(sources, name, transcribe_words=False, activate=False):
+def clone(sources, name, transcribe_words=False, activate=False, refine=True):
     """Télécharge/analyse les références → styles/<nom>.json, rangé dans la bibliothèque (état « Copié »)."""
     name = slug(name)
     base = STYLES / "refs" / name
@@ -182,6 +182,12 @@ def clone(sources, name, transcribe_words=False, activate=False):
         old = existing.get("library", {})
         style["library"].update({k: old[k] for k in ("cards", "fonts", "etat") if k in old})
     save_json(STYLES / f"{name}.json", style)
+    if refine:
+        try:
+            from .style_refine import refine as do_refine
+            style, _ = do_refine(name)
+        except ImportError:
+            log("Affinage automatique indisponible (OpenCV absent : bash setup.sh) — fais-le avec Claude.")
     if activate:
         from .common import set_setting
         set_setting(style=name)
