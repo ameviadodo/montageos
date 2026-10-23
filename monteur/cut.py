@@ -8,6 +8,10 @@ from difflib import SequenceMatcher
 from .common import ffmpeg_progress, log, probe, run, save_json
 
 
+# mots qui se répètent normalement : « nous nous sommes levés », « vous vous trompez », « that that », « had had »
+LEGIT_DOUBLES = {"nous", "vous", "that", "had"}
+
+
 def norm(word):
     w = unicodedata.normalize("NFKD", word.lower())
     w = "".join(c for c in w if not unicodedata.combining(c))
@@ -60,7 +64,8 @@ def find_removals(words, cfg):
         i = 0
         while i + 2 * n <= len(toks):
             a, b = toks[i:i + n], toks[i + n:i + 2 * n]
-            if all(a) and a == b and not any(k in drop for k in range(i, i + n)):
+            if all(a) and a == b and not any(k in drop for k in range(i, i + n)) \
+                    and not (n == 1 and a[0] in LEGIT_DOUBLES):
                 for k in range(i, i + n):
                     drop[k] = "repeat"
                 i += n
@@ -136,6 +141,9 @@ def build_edl(video, transcript, cfg):
     else:
         keep = subtract([[0, dur]], [(s + pad, e - pad) for s, e in sil])
     keep = [[round(s, 3), round(e, 3)] for s, e in merge(keep) if e - s >= cfg.get("min_keep", 0.25)]
+    if not keep:  # tout serait coupé (rush muet, seuil trop haut) : on garde le rush entier plutôt qu'un ffmpeg en échec
+        log("⚠️  La coupe ne garderait rien (silence partout ?) : rush gardé en entier. Ajuste cut.silence_db si besoin.")
+        keep, removed = [[0.0, round(dur, 3)]], {}
     kept = sum(e - s for s, e in keep)
     stats = {"source_duration": round(dur, 2), "kept_duration": round(kept, 2),
              "removed_s": round(dur - kept, 2), "segments": len(keep),
@@ -205,6 +213,8 @@ def cut(ws, style, transcript=None):
     edl = build_edl(ws.source, transcript, cfg)
     save_json(ws.edl, edl)
     render_cut(ws.source, edl, ws.cut_video, ws.dir)
-    if transcript:
+    if transcript and transcript.get("words"):
         save_json(ws.cut_transcript, remap_transcript(transcript, edl["keep"], [r["i"] for r in edl.get("removed", [])]))
+    else:  # sans transcription : pas de transcript_cut.json d'une coupe précédente (mots décalés dans les sous-titres)
+        ws.cut_transcript.unlink(missing_ok=True)
     return edl

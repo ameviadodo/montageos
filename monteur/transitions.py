@@ -67,8 +67,9 @@ def zooms(trans, dur, scale=1.12):
     return out
 
 
-def filters(trans):
-    """Filtres vidéo (sur la timeline finale) : éclat / noir via eq, glitch via rgbashift, filé et fondu via tmix."""
+def filters(trans, width=1080):
+    """Filtres vidéo sans état (sur la timeline finale) : éclat / noir via eq, glitch via rgbashift, filé via flou
+    horizontal. Le fondu (images mêlées) demande un tampon d'images : voir fondu_graph()."""
     bright = [_tri(x["t"], 0.55, 0.07) for x in trans if x["kind"] == "flash"]
     bright += [_tri(x["t"], -0.95, 0.16) for x in trans if x["kind"] == "dip"]
     out = []
@@ -80,13 +81,21 @@ def filters(trans):
         en = "+".join(win(x, 0.04, 0.12) for x in g)
         out.append(f"rgbashift=rh=-14:bh=14:gv=4:enable='{en}'")
         out.append(f"rgbashift=rh=8:bv=-6:enable='{'+'.join(win(x, -0.04, 0.08) for x in g)}'")
-    blur = [x for x in trans if x["kind"] in ("whip", "fondu")]
-    for kind, frames in (("whip", 4), ("fondu", 7)):
-        sel = [x for x in blur if x["kind"] == kind]
-        if sel:
-            a = 0.08 if kind == "whip" else 0.14
-            out.append(f"tmix=frames={frames}:enable='{'+'.join(win(x, a, a) for x in sel)}'")
+    # whip : filé horizontal. Pas de tmix ici : activé par « enable », son tampon démarre vide (vert en YUV)
+    # et chaque whip affichait un flash vert au lieu du filé.
+    w = [x for x in trans if x["kind"] == "whip"]
+    if w:
+        out.append(f"avgblur=sizeX={max(8, int(width * 0.045))}:sizeY=1:enable='{'+'.join(win(x, 0.08, 0.08) for x in w)}'")
     return out
+
+
+def fondu_graph(src, dst, trans):
+    """Fondu (images mêlées) : tmix tourne en continu sur une branche, superposée seulement pendant le raccord."""
+    sel = [x for x in trans if x["kind"] == "fondu"]
+    if not sel:
+        return None
+    en = "+".join(f"between(t,{x['t'] - 0.14:.3f},{x['t'] + 0.14:.3f})" for x in sel)
+    return f"[{src}]split[fd_a][fd_b];[fd_b]tmix=frames=7[fd_m];[fd_a][fd_m]overlay=0:0:enable='{en}'[{dst}]"
 
 
 def sfx_events(trans, cfg=None):

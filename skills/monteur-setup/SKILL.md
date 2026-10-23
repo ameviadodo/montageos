@@ -38,4 +38,19 @@ Tu as l'autorisation d'installer seul les **petites ressources gratuites** néce
 | yt-dlp « Sign in to confirm » / 403 | `bin/monteur doctor` puis `<python du venv> -m pip install -U yt-dlp` ; sinon demander le MP4 à l'utilisateur |
 
 ## Clés API (facultatives — à demander seulement si la fonction est voulue)
-`PEXELS_API_KEY`, `PIXABAY_API_KEY` (B-roll vidéo gratuits), `FREESOUND_API_KEY` (bruitages réels), `MAGNIFIC_API_KEY` (upscale), `GEMINI_API_KEY` (Veo). À mettre dans `.env` à la racine (chargé par `bin/monteur`) ou dans l'environnement. Higgsfield passe par le connecteur MCP (pas de clé).
+| Clé | Service | Usage |
+|---|---|---|
+| `ELEVENLABS_API_KEY` (+ `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL`) | ElevenLabs | voix off, mots horodatés |
+| `INWORLD_API_KEY` (+ `INWORLD_VOICE`, `INWORLD_MODEL`) | Inworld TTS | voix off (clé « Basic » du portail, ou `id:secret`) |
+| `PEXELS_API_KEY`, `PIXABAY_API_KEY` | Pexels, Pixabay | B-roll vidéo / photo gratuits |
+| `WIKIMEDIA_ACCESS_TOKEN` | Wikimedia Commons | facultatif (Wikimedia marche sans clé) |
+| `FREESOUND_API_KEY`, `MAGNIFIC_API_KEY`, `GEMINI_API_KEY` | Freesound, Magnific, Veo | bruitages, upscale, clips IA |
+
+L'utilisateur te donne une clé → enregistre-la toi-même puis teste :
+```bash
+bin/monteur cles --set ELEVENLABS_API_KEY=sk_…      # écrit .env (jamais affiché en clair ensuite)
+bin/monteur cles --test                             # ✅ / ❌ par service (clé refusée, réseau…)
+bin/monteur cles                                    # état
+```
+Ne recopie jamais une clé dans un message, un commit ou un fichier autre que `.env` (ignoré par git). Studio : Activité › Connexions.
+Sans aucune clé, tout marche quand même (contournement automatique) : B-roll Wikimedia, voix Edge gratuite puis espeak hors-ligne, bruitages synthétisés. Higgsfield passe par le connecteur MCP (pas de clé).

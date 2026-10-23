@@ -10,7 +10,8 @@ import time
 
 from .common import load_json, log, save_json
 
-FILES = ["plan.json", "edl.json", "transcript.json", "transcript_cut.json", "style.json", "cut.mp4"]
+FILES = ["plan.json", "edl.json", "transcript.json", "transcript_cut.json", "style.json", "cut.mp4", "voixoff.json",
+         "transcript.rush.json"]
 KEEP = 30
 
 

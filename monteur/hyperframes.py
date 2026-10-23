@@ -9,6 +9,9 @@ HF = ["npx", "-y", "hyperframes@latest"]
 
 
 def new(ws, name, resolution="landscape", example="blank"):
+    import os
+    # init vérifie et installe ses skills depuis GitHub à chaque projet : inutile (et bloquant hors-ligne) ici
+    os.environ.setdefault("HYPERFRAMES_SKIP_SKILLS", "1")
     root = ws.dir / "hyperframes"
     root.mkdir(exist_ok=True)
     proj = root / name

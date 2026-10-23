@@ -87,7 +87,74 @@ def _segments(m, wav, language):
                               vad_filter=False, condition_on_previous_text=False)
 
 
+def scribe(audio, language=None):
+    """ElevenLabs Scribe (même moteur que coupe-facecam) : mots horodatés, « euh » gardés (verbatim).
+    Aucune dépendance (multipart fait main) ; clé ELEVENLABS_API_KEY avec le droit « Speech to Text »."""
+    import json
+    import os
+    import time
+    import urllib.error
+    import urllib.request
+    import uuid
+    key = os.environ.get("ELEVENLABS_API_KEY")
+    if not key:
+        raise NoWhisper("ELEVENLABS_API_KEY absente")
+    fields = {"model_id": os.environ.get("ELEVENLABS_STT_MODEL", "scribe_v2"), "tag_audio_events": "true",
+              "timestamps_granularity": "word", "diarize": "false"}
+    if language:
+        fields["language_code"] = language
+    b = uuid.uuid4().hex
+    body = b"".join(f'--{b}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode() for k, v in fields.items())
+    body += (f'--{b}\r\nContent-Disposition: form-data; name="file"; filename="{audio.name}"\r\n'
+             f'Content-Type: audio/flac\r\n\r\n').encode() + audio.read_bytes() + f"\r\n--{b}--\r\n".encode()
+    for attempt in range(3):
+        req = urllib.request.Request("https://api.elevenlabs.io/v1/speech-to-text", data=body, method="POST",
+                                     headers={"xi-api-key": key, "Content-Type": f"multipart/form-data; boundary={b}",
+                                              "User-Agent": "MonteurOS/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=1800) as r:
+                res = json.load(r)
+            break
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 500, 502, 503, 504) and attempt < 2:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise RuntimeError(f"ElevenLabs Scribe : HTTP {e.code} {e.read().decode('utf-8', 'replace')[:200]}") from None
+    words = [{"w": w["text"].strip(), "start": round(float(w["start"]), 3),
+              "end": round(max(float(w["end"]), float(w["start"]) + 0.02), 3),
+              "p": round(min(1.0, 2.718 ** float(w.get("logprob") or 0)), 3)}
+             for w in res.get("words", []) if w.get("type") == "word" and w.get("start") is not None and (w.get("text") or "").strip()]
+    return words, res.get("language_code") or language
+
+
 def transcribe(video, out_json, model="small", language=None):
+    import os
+    if os.environ.get("MONTEUR_TRANSCRIPTION") == "elevenlabs" and os.environ.get("ELEVENLABS_API_KEY"):
+        return transcribe_scribe(video, out_json, language)
+    try:
+        return _transcribe_whisper(video, out_json, model, language)
+    except (NoWhisper, SystemExit, Exception) as e:  # Whisper absent ou modèle introuvable : on contourne par Scribe
+        if not os.environ.get("ELEVENLABS_API_KEY"):
+            raise
+        log(f"Whisper indisponible ({str(e).splitlines()[0][:100]}) → transcription ElevenLabs Scribe.")
+        return transcribe_scribe(video, out_json, language)
+
+
+def transcribe_scribe(video, out_json, language=None):
+    flac = out_json.with_suffix(".flac")
+    ffmpeg(["-i", video, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "flac", flac])
+    try:
+        log("Transcription ElevenLabs Scribe (mots horodatés, euh gardés)…")
+        words, lang = scribe(flac, language)
+    finally:
+        flac.unlink(missing_ok=True)
+    data = {"language": lang, "words": words, "text": " ".join(w["w"] for w in words), "engine": "elevenlabs-scribe"}
+    save_json(out_json, data)
+    log(f"{len(words)} mots transcrits (Scribe) → {out_json}")
+    return data
+
+
+def _transcribe_whisper(video, out_json, model="small", language=None):
     wav = out_json.with_suffix(".wav")
     ffmpeg(["-i", video, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wav])
     words, lang = [], language

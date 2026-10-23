@@ -66,7 +66,8 @@ def wikimedia(query, kind, portrait):
     q = urllib.parse.urlencode({"action": "query", "format": "json", "generator": "search",
                                 "gsrsearch": f"filetype:bitmap {query}", "gsrnamespace": 6, "gsrlimit": 5,
                                 "prop": "imageinfo", "iiprop": "url|size", "iiurlwidth": 1920})
-    res = _get(f"https://commons.wikimedia.org/w/api.php?{q}")
+    from .keys import wikimedia_headers  # jeton facultatif (quota plus large), Wikimedia marche sans
+    res = _get(f"https://commons.wikimedia.org/w/api.php?{q}", wikimedia_headers())
     pages = sorted(res.get("query", {}).get("pages", {}).values(), key=lambda p: p.get("index", 99))
     for p in pages:
         ii = (p.get("imageinfo") or [{}])[0]

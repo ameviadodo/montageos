@@ -16,9 +16,21 @@ def download(url, dest_dir):
     opts = {"format": "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080]/b",
             "merge_output_format": "mp4", "outtmpl": str(dest_dir / "%(id)s.%(ext)s"),
             "quiet": True, "noplaylist": True}
-    with yt_dlp.YoutubeDL(opts) as y:
-        meta = y.extract_info(url, download=True)
-    path = dest_dir / f"{meta['id']}.mp4"
+    try:
+        with yt_dlp.YoutubeDL(opts) as y:
+            meta = y.extract_info(url, download=True)
+    except Exception as e:  # vidéo privée, géobloquée, connexion exigée (Instagram, TikTok)…
+        raise SystemExit(f"Téléchargement impossible : {url}\n{type(e).__name__}: {str(e)[:300]}\n"
+                         "Télécharge la vidéo toi-même et donne le fichier MP4 à la place du lien.")
+    if meta.get("entries"):  # lien de playlist / de compte malgré noplaylist : première vidéo
+        meta = next(e for e in meta["entries"] if e)
+    # le format de repli (« b ») peut être un .webm / .mkv non fusionné : on prend le vrai fichier écrit
+    got = [Path(d["filepath"]) for d in meta.get("requested_downloads") or [] if d.get("filepath")]
+    path = next((p for p in got if p.exists()), None) or next(
+        (p for p in sorted(dest_dir.glob(f"{meta['id']}.*")) if p.suffix.lower() in (".mp4", ".webm", ".mkv", ".mov")),
+        dest_dir / f"{meta['id']}.mp4")
+    if not path.exists():
+        raise SystemExit(f"yt-dlp n'a écrit aucun fichier vidéo pour {url}")
     save_json(dest_dir / f"{meta['id']}.meta.json",
               {k: meta.get(k) for k in ("id", "title", "uploader", "duration", "webpage_url", "chapters")})
     return path

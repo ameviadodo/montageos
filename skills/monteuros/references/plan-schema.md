@@ -28,11 +28,14 @@ Toutes les durées sont en secondes **sur la timeline coupée** (`cut.mp4`).
   "sfx": [{"t": 30.0, "name": "ding", "gain": 0.4}],   // en plus des bruitages automatiques
   "emphasis": [12, 57],                                  // indices de mots (transcript_cut)
   "emphasis_words": ["ventes", "gratuit", "30"],         // ou par texte (insensible à la casse)
-  "music": null                                          // chemin musique (sinon style.audio.music)
+  "music": null,                                         // chemin musique (sinon style.audio.music)
+  "voiceover": {"file": "voixoff/voix.wav", "start": 0, "duration": 11.0, "gain": 1.0, "original": 0.15}
+                     // voix off (bin/monteur voixoff) : piste principale, son du rush à `original` ; null = coupée
 }
 ```
 
 - `file` à `null` = à trouver (`monteur broll`) ou à générer (IA puis `monteur attach`).
 - `layout: "pip"` = incrustation en haut à droite ; `full` = plein écran (la voix continue) — en format Split carte, `full` va dans le panneau du haut ; `fullscreen` force le plein cadre.
 - `hide_subs: true` masque les sous-titres pendant un B-roll très chargé.
+- `"auto": true` (motion) = posé par `monteur habiller` : remplacé au prochain habillage. Retire la clé pour garder l'élément.
 - Les bruitages automatiques découlent de `style.sfx` (`on_zoom`, `on_broll`, `on_motion`, `on_transition`).

@@ -91,6 +91,15 @@ def _render(ws, style, out=None, draft=False, safe=False):
         W, H = W // 4 * 2, H // 4 * 2
     fps = info["fps"]
     dur = info["duration"]
+    # voix off (fichier fourni ou script synthétisé) : piste principale ; vidéo prolongée si la voix dure plus
+    from .voixoff import end_time, settings as vo_settings
+    vo = vo_settings(ws, plan)
+    if vo and not (ws.dir / str(vo.get("file", ""))).exists():
+        log(f"⚠️  Voix off introuvable, ignorée : {vo.get('file')}")
+        vo = None
+    hold = max(0.0, end_time(vo) - dur) if vo else 0.0
+    src = SRC + (f"tpad=stop_mode=clone:stop_duration={hold:.3f}," if hold > 0.04 else "")
+    dur += hold if hold > 0.04 else 0.0
     zc = style["zoom"]
     inputs, graph = ["-i", video], []
     n_in = 1
@@ -138,9 +147,9 @@ def _render(ws, style, out=None, draft=False, safe=False):
             crop = f"crop={cw}:{ch}:'{xexpr}':0" if xexpr else f"crop={cw}:{ch}:(iw-ow)*{fx}:0"
         else:
             crop = f"crop=iw:iw*{H}/{W}:0:(ih-oh)*{fy}"
-        graph.append(f"[0:v]{SRC}{crop},scale={W}:{H}:flags=lanczos,setsar=1[v0]")
+        graph.append(f"[0:v]{src}{crop},scale={W}:{H}:flags=lanczos,setsar=1[v0]")
     else:
-        graph.append(f"[0:v]{SRC}scale={W}:{H}:flags=lanczos,setsar=1[v0]")
+        graph.append(f"[0:v]{src}scale={W}:{H}:flags=lanczos,setsar=1[v0]")
     cur = "v0"
     cropped_on_face = abs(sw / sh - W / H) > 0.01 and sw / sh > W / H and bool(face and face.get("faces"))
     zx = 0.5 if cropped_on_face else (face["median"][0] if face and face.get("median") else fx)
@@ -168,10 +177,14 @@ def _render(ws, style, out=None, draft=False, safe=False):
     if look.get("letterbox"):
         bar = int(max(0, H - W / look["letterbox"]) / 2) if W > H else int(H * 0.06)
         fx.append(f"drawbox=x=0:y=0:w=iw:h={bar}:color=black:t=fill,drawbox=x=0:y=ih-{bar}:w=iw:h={bar}:color=black:t=fill")
-    fx += tr.filters(trans)
+    fx += tr.filters(trans, W)
     if fx:
         graph.append(f"[{cur}]{','.join(fx)}[vl]")
         cur = "vl"
+    fondu = tr.fondu_graph(cur, "vfd", trans)
+    if fondu:
+        graph.append(fondu)
+        cur = "vfd"
     if split:
         graph.append(f"[{cur}]pad={CW}:{CH}:0:{y0}:color={fmt.get('panel_color', '#0B0F1A')}[vp]")  # côté : x=0
         cur = "vp"
@@ -238,11 +251,21 @@ def _render(ws, style, out=None, draft=False, safe=False):
 
     # 5) audio : voix + bruitages + musique (ducking) → loudnorm
     mix = []
-    if info["has_audio"]:
-        graph.append("[0:a]aresample=48000,asplit=2[voice][sc]")
+    if vo:  # voix off devant, son du rush dessous (ambiance) ; le ducking de la musique suit la voix off
+        inputs += ["-i", str(ws.dir / vo["file"])]
+        ms = int(float(vo.get("start", 0)) * 1000)
+        graph.append(f"[{n_in}:a]aresample=48000,aformat=channel_layouts=stereo,volume={float(vo.get('gain', 1)):.3f},"
+                     f"adelay={ms}|{ms},apad,atrim=0:{dur:.3f},asplit=2[voice][sc]")
+        n_in += 1
+        if info["has_audio"] and float(vo.get("original", 0.15)) > 0:
+            graph.append(f"[0:a]aresample=48000,aformat=channel_layouts=stereo,volume={float(vo['original']):.3f},"
+                         f"apad,atrim=0:{dur:.3f}[orig]")
+            mix.append("[orig]")
+    elif info["has_audio"]:
+        graph.append(f"[0:a]aresample=48000,apad,atrim=0:{dur:.3f},asplit=2[voice][sc]")
     else:
         graph.append(f"anullsrc=r=48000:cl=stereo,atrim=0:{dur:.3f},asplit=2[voice][sc]")
-    mix.append("[voice]")
+    mix.insert(0, "[voice]")
     events = [e for e in auto_events(plan, style) if e["t"] < dur]
     if events:  # chaque fichier de bruitage n'est ouvert qu'une fois (asplit), puis tout est pré-mixé sur une piste
         files = sorted({e["file"] for e in events})
@@ -269,12 +292,24 @@ def _render(ws, style, out=None, draft=False, safe=False):
     if music and not (ws.dir / str(music)).exists():
         log(f"⚠️  Musique introuvable, ignorée : {music}")
         music = None
+    measured = None
+    if music and ac.get("music_under_db") is not None:  # niveau mesuré sous la voix, pas de gain fixe
+        from .niveaux import music_gains
+        voice_src = (ws.dir / vo["file"]) if vo else (video if info["has_audio"] else None)
+        music_path = ws.dir / str(music)  # absolu, ou relatif au dossier du projet
+        measured = music_gains(voice_src, music_path, float(ac["music_under_db"]),
+                               float(ac.get("hook_under_db", 12))) if voice_src else None
     if music:
         inputs += ["-stream_loop", "-1", "-i", music]
+        if measured:
+            hook = float(ac.get("hook_s") or next((m["end"] for m in plan.get("motion", []) if m.get("type") == "title"), 3.0))
+            vol = f"volume='if(lt(t,{hook:.2f}),{measured[0]:.4f},{measured[1]:.4f})':eval=frame"
+        else:
+            vol = f"volume={ac['music_volume']}"
         graph.append(f"[{n_in}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:{dur:.3f},"
-                     f"volume={ac['music_volume']},afade=t=out:st={max(0, dur - 2):.3f}:d=2[mus]")
+                     f"{vol},afade=t=out:st={max(0, dur - 2):.3f}:d=2[mus]")
         n_in += 1
-        if ac.get("duck", True):
+        if ac.get("duck", True) and not measured:  # niveau mesuré à −21 dB : pas de pompage en plus
             graph.append("[mus][sc]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=400[musd]")
             mix.append("[musd]")
         else:

@@ -46,7 +46,12 @@ class Transitions(unittest.TestCase):
         self.assertIn("eq=brightness='0.550*max(0,1-abs(t-2.000)/0.070)+-0.950*", f)
         self.assertIn("eval=frame", f)
         self.assertIn("rgbashift", f)
-        self.assertIn("tmix=frames=4", f)
+        self.assertIn("avgblur=sizeX=", f)  # filé sans état : tmix + enable démarrait sur un tampon vide (flash vert)
+        self.assertNotIn("tmix", f)
+        self.assertIsNone(tr.fondu_graph("v", "o", trans))
+        fd = tr.fondu_graph("vl", "vfd", [{"t": 3, "kind": "fondu"}])
+        self.assertTrue(fd.startswith("[vl]split") and "tmix=frames=7" in fd and fd.endswith("[vfd]"))
+        self.assertNotIn("tmix=frames=7:enable", fd)  # tmix tourne en continu, seul l'overlay est minuté
         z = tr.zooms(trans, 14)
         self.assertEqual([(x["kind"], x["start"]) for x in z], [("pulse", 7.88), ("punch", 9)])  # 1 zoom cut sur 2
         self.assertEqual(z[1]["end"], 11)

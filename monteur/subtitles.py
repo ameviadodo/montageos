@@ -11,10 +11,10 @@ def ass_color(hex_color, alpha=0):
 
 
 def ts(t):
-    t = max(0, t)
-    h, rem = divmod(t, 3600)
-    m, s = divmod(rem, 60)
-    return f"{int(h)}:{int(m):02d}:{s:05.2f}"
+    cs = int(round(max(0, t) * 100))  # arrondi au centième AVANT découpage : 59.996 → 0:01:00.00, pas 0:00:60.00
+    h, rem = divmod(cs, 360000)
+    m, rem = divmod(rem, 6000)
+    return f"{h}:{m:02d}:{rem // 100:02d}.{rem % 100:02d}"
 
 
 def esc(text):
@@ -95,7 +95,10 @@ def build_subtitles(transcript, plan, style, w, h, out):
         g_end = g[-1]["end"] + 0.12
         if gi + 1 < len(groups):
             g_end = min(g_end + 0.3, groups[gi + 1][0]["start"])
-        if any(s <= g[0]["start"] < e for s, e in hidden):
+        # bloc masqué s'il chevauche surtout un titre / CTA / B-roll « hide_subs » (pas seulement s'il commence dedans :
+        # la voix démarre souvent juste avant le titre d'accroche → le sous-titre doublait le titre)
+        g_len = max(0.01, g_end - g[0]["start"])
+        if any(min(e, g_end) - max(s, g[0]["start"]) >= 0.3 * g_len for s, e in hidden):
             continue
         steps = g if c.get("karaoke", True) else [g[0]]
         for k, cur in enumerate(steps):
