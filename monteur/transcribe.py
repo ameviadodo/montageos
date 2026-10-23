@@ -148,6 +148,8 @@ def transcribe_scribe(video, out_json, language=None):
         words, lang = scribe(flac, language)
     finally:
         flac.unlink(missing_ok=True)
+    from .common import merge_elisions
+    words = merge_elisions(words)
     data = {"language": lang, "words": words, "text": " ".join(w["w"] for w in words), "engine": "elevenlabs-scribe"}
     save_json(out_json, data)
     log(f"{len(words)} mots transcrits (Scribe) → {out_json}")
@@ -183,7 +185,8 @@ def _transcribe_whisper(video, out_json, model="small", language=None):
                 words.append({"w": w["word"].strip(), "start": round(w["start"], 3),
                               "end": round(w["end"], 3), "p": round(w.get("probability", 1), 3)})
     wav.unlink(missing_ok=True)
-    words = [w for w in words if w["w"]]
+    from .common import merge_elisions
+    words = merge_elisions([w for w in words if w["w"]])
     data = {"language": lang, "words": words, "text": " ".join(w["w"] for w in words)}
     save_json(out_json, data)
     log(f"{len(words)} mots transcrits → {out_json}")

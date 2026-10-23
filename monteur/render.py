@@ -266,7 +266,12 @@ def _render(ws, style, out=None, draft=False, safe=False):
     else:
         graph.append(f"anullsrc=r=48000:cl=stereo,atrim=0:{dur:.3f},asplit=2[voice][sc]")
     mix.insert(0, "[voice]")
-    events = [e for e in auto_events(plan, style) if e["t"] < dur]
+    voice_src = (ws.dir / vo["file"]) if vo else (video if info["has_audio"] else None)
+    from .niveaux import voice_db
+    vdb = voice_db(voice_src) if voice_src and style["sfx"].get("enabled") else None
+    events = [e for e in auto_events(plan, style, vdb, (transcript or {}).get("words")) if e["t"] < dur]
+    for e in events:
+        log(f"  🔊 {e['t']:6.2f}s {e['name']:<7} ({e['why']}, gain {e['gain']})")
     if events:  # chaque fichier de bruitage n'est ouvert qu'une fois (asplit), puis tout est pré-mixé sur une piste
         files = sorted({e["file"] for e in events})
         for f in files:

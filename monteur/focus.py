@@ -19,20 +19,17 @@ def detect(video, every=0.5):
     W = 480
     H = max(2, int(round(W * info["height"] / info["width"] / 2)) * 2)
     # ffmpeg ne décode que ce qu'il faut et livre directement des images 480 px en niveaux de gris
+    from .faces import detect as find_faces  # YuNet (toutes carnations), repli Haar
     p = subprocess.Popen(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(video), "-an", "-vf",
-                          f"fps=1/{every},scale={W}:{H},format=gray", "-f", "rawvideo", "-"],
+                          f"fps=1/{every},scale={W}:{H},format=bgr24", "-f", "rawvideo", "-"],
                          stdout=subprocess.PIPE)
-    front = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    prof = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml")
-    out, k, size = [], 0, W * H
+    out, k, size = [], 0, W * H * 3
     while True:
         buf = p.stdout.read(size)
         if len(buf) < size:
             break
-        gray = np.frombuffer(buf, np.uint8).reshape(H, W)
-        faces = front.detectMultiScale(gray, 1.15, 5, minSize=(28, 28))
-        if len(faces) == 0:
-            faces = prof.detectMultiScale(gray, 1.15, 5, minSize=(28, 28))
+        img = np.frombuffer(buf, np.uint8).reshape(H, W, 3)
+        faces = [f[:4] for f in find_faces(img)]
         if len(faces):
             x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
             out.append((round(k * every, 2), round((x + fw / 2) / W, 4), round((y + fh / 2) / H, 4)))
@@ -48,12 +45,12 @@ def track(ws, video):
     st = Path(video).stat()
     stamp = [int(st.st_mtime), st.st_size]  # cut.mp4 réécrit (nouvelle coupe) : même chemin, autre timeline
     data = load_json(cache)
-    if data and data.get("video") == str(video) and data.get("stamp") == stamp:
+    if data and data.get("video") == str(video) and data.get("stamp") == stamp and data.get("detector") == "yunet":
         return data
     faces = detect(video)
     if faces is None:
         return None
-    data = {"video": str(video), "stamp": stamp, "faces": faces}
+    data = {"video": str(video), "stamp": stamp, "detector": "yunet", "faces": faces}
     if faces:
         data["median"] = [statistics.median(f[1] for f in faces), statistics.median(f[2] for f in faces)]
     save_json(cache, data)

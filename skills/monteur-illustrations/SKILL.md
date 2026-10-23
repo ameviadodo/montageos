@@ -18,6 +18,8 @@ bin/monteur broll RUSH.mp4
 ```
 Ordre `provider: auto` : Pexels → Pixabay → Wikimedia (sans clé). Orientation déduite du format. Fichiers dans `RUSH.monteur/assets/broll/`. Les entrées sans résultat restent `file: null` → reformule ou passe en IA.
 
+**Jamais une autre personne à l'image** : chaque visuel de banque (Pexels, Pixabay, Wikimedia) est analysé (détecteur de visages YuNet) ; s'il montre un visage, il est écarté et le résultat suivant est essayé. Les B-roll déjà attachés sont revérifiés à chaque `broll` / `prep`. Choisis des requêtes d'**objets, de lieux, d'écrans, de gestes** (« laptop video editing timeline », « microphone close up »), pas de personnes. `"allow_people": true` sur une entrée du plan seulement si l'utilisateur fournit lui-même l'image ou le demande.
+
 ## 3. Visuels IA (quand la banque ne suffit pas)
 Mets `provider` = `higgsfield` / `flow` / `veo` / `magnific` + `prompt` détaillé, puis suis le skill `monteur-studio-ia`. Une fois le fichier obtenu :
 ```bash

@@ -41,6 +41,9 @@ Règles : une carte toutes les 4–8 s max, texte ≤ 8 mots par ligne, couleur 
 ### Créer une carte
 Copie une carte existante : en-tête `<!--meta {label, category, mode: overlay|full, duration, vars, tags, usage}-->` (`tags` = mots de recherche), puis `<style>`, `<template>` (HTML, variables `{{clé|défaut}}`), `<script>` (timeline GSAP `tl`, valeurs dans `V`, durée `V.DUR`). Unité : `var(--u)` = 1 % du petit côté. Règles Hyperframes : pas de `Math.random`/`Date.now`, tout est seekable (Hyperframes rend image par image avec `seek(t, false)` : les `tl.call` passent ; mets `immediateRender: false` sur un `fromTo` placé tard dans la timeline, sinon l'élément reste invisible jusque-là). Vérifie l'aperçu dans le Studio, puis un rendu test.
 
+### Cartes du style : posées automatiquement, aux couleurs du style
+`prep` et « Appliquer ce style » lancent l'habillage avec les cartes de `library.cards` du style : nom de l'orateur détecté (« moi c'est … », « je m'appelle … ») → médaillon ; énumération (« premièrement… », « d'abord / ensuite / enfin ») → carte liste du style (`surlignage.liste`, `ecran.rail`, `classement.top`…) ; chiffre → `stat.courbe` ; « X € au lieu de Y » → `prix.promo` ; mot fort → `mot.punch` / `titre.barre`. Chaque carte prend l'**accent, l'encre et les polices** du style. Jamais deux cartes en même temps ; une carte déjà rendue avec les mêmes textes est réutilisée. Désactiver : `"habillage": {"auto": false}` dans le style ; sans Hyperframes, des animations texte prennent le relais (`"hyperframes": false` pour les forcer).
+
 ## Références (`styles/*.json` → bloc `library`)
 `etat` (Prêt, Draft, Copié, Charte…), `palette`, `fonts {display, body, mono}`, `cards` (ids de cartes associées — **chaque style doit en avoir**, vérifié par les tests), `ratios`, `sources` (liens des vidéos copiées). Le style `nocturne` porte la charte relevée sur la vidéo de référence (bleu nuit, jaune #FFD935, serif italique, mono capitales).
 

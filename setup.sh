@@ -129,6 +129,12 @@ if [ "$WHISPER" = 1 ]; then
   "$ROOT/bin/monteur" whisper --model "$WM" || say "⚠️  Modèle non téléchargé (réseau ?). Il le sera au premier « prep », ou relance : bin/monteur whisper"
 fi
 
+# 4a bis) Détecteur de visages YuNet (OpenCV, MIT) : cadrage sur l'orateur, filtre des B-roll
+mkdir -p assets/models
+[ -s assets/models/face_detection_yunet_2023mar.onnx ] || curl -fsSL -o assets/models/face_detection_yunet_2023mar.onnx \
+  "https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx" \
+  || say "⚠️  détecteur YuNet non téléchargé (repli Haar, moins fiable sur peau foncée)"
+
 # 4b) GSAP en local (aperçus des cartes animées hors-ligne)
 if command -v npm >/dev/null && [ ! -s assets/vendor/gsap.min.js ]; then
   mkdir -p assets/vendor .cache/npm

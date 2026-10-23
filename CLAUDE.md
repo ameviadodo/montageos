@@ -28,7 +28,7 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 | `monteur/generate.py` | Magnific, Veo, `attach` (Higgsfield via MCP) |
 | `monteur/hyperframes.py` | compositions HTML → MOV alpha |
 | `monteur/subtitles.py` | ASS karaoké + animations texte (title, lower_third, callout, chapter, cta) |
-| `monteur/sfx.py` | bruitages synthétisés / Freesound / événements auto |
+| `monteur/sfx.py` | bruitages synthétisés / Freesound ; placement par priorité + espacement, volume mesuré sous la voix |
 | `monteur/render.py` | recadrage, zoompan, look, overlays, ASS, mix + loudnorm |
 | `monteur/style_clone.py` | analyse de références → `styles/<nom>.json` |
 | `monteur/style_refine.py` | affinage auto d'un style copié : cuts réels, zooms, bande/taille/couleurs des sous-titres |
@@ -44,9 +44,11 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 | `monteur/studio.py`, `ui/index.html` | MonteurOS Studio : Projets · Studio · Bibliothèques · Activité |
 | `monteur/voiceover.py` | moteurs de voix : ElevenLabs, Inworld (mots horodatés), Edge, espeak — repli automatique |
 | `monteur/voixoff.py` | voix off d'un projet (fichier ou script) → piste voix + transcription calée, vidéo prolongée si besoin |
-| `monteur/habillage.py` | habillage auto Hyperframes : chiffres, prix promo, mot fort, médaillon (repli texte sans Node 22) |
+| `monteur/habillage.py` | habillage auto aux cartes du style : nom, énumération, chiffres, prix, mot fort (repli texte sans Node 22) |
 | `monteur/adapt.py` | analyse de la vidéo source : voix ?, style/format conseillés, ce qu'il faut demander |
 | `monteur/keys.py` | clés API dans `.env` : état masqué, enregistrement, test de connexion |
 | `monteur/facecam.py`, `skills/coupe-facecam/` | passerelle coupe-facecam (`bin/monteur facecam …`, `importer` → projet MonteurOS) |
 | `monteur/niveaux.py` | niveaux audio mesurés : musique à N dB sous la voix (accroche −12 dB, corps −21 dB) |
 | `monteur/notify.py` | notifications Telegram (`bin/monteur notifier`) |
+| `monteur/fonts.py` | polices du style résolues (installées, Google Fonts, repli annoncé) pour sous-titres, titres, cartes |
+| `monteur/faces.py` | détection de visages YuNet (repli Haar) : cadrage sur l'orateur, B-roll sans autre personne |

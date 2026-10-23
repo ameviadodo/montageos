@@ -14,13 +14,15 @@
 @font-face{font-family:"Space Mono";src:url(fonts/SpaceMono-Regular.ttf)}
 @font-face{font-family:"Space Mono";font-weight:700;src:url(fonts/SpaceMono-Bold.ttf)}
 @font-face{font-family:"Fraunces";src:url(fonts/Fraunces.ttf)}
+{{FONT_FACES|}}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:{{W}}px;height:{{H}}px;overflow:hidden;background:transparent}
 #root{position:relative;width:100%;height:100%;--u:{{U}}px;--accent:{{accent|#FFD935}};--ink:{{ink|#F4F2EC}};
-  --night:#0B0F1A;--glass:rgba(20,26,40,.62);font-family:Montserrat,system-ui,sans-serif;color:var(--ink)}
+  --night:#0B0F1A;--glass:rgba(20,26,40,.62);--font-body:{{FONT_BODY|Montserrat}};--font-serif:{{FONT_SERIF|"Instrument Serif"}};
+  --font-mono:{{FONT_MONO|"Space Mono"}};font-family:var(--font-body),system-ui,sans-serif;color:var(--ink)}
 .clip{position:absolute;inset:0}
-.serif{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-weight:400}
-.mono{font-family:"Space Mono",ui-monospace,monospace;letter-spacing:.18em;text-transform:uppercase}
+.serif{font-family:var(--font-serif),Georgia,serif;font-style:italic;font-weight:400}
+.mono{font-family:var(--font-mono),ui-monospace,monospace;letter-spacing:.18em;text-transform:uppercase}
 {{CSS}}
 </style>
 </head>

@@ -114,7 +114,12 @@ def auto_plan(ws, style, transcript):
 
     mc = style["motion"]
     if mc.get("enabled") and mc.get("hook_title") and ph:
-        first = [words[i]["w"] for i in ph[0]][:5]
+        first = []  # première PHRASE (jusqu'au point), pas le premier souffle : « Bienvenue, moi c'est Soprador »
+        for w in words[:8]:
+            first.append(w["w"])
+            if w["w"].rstrip()[-1:] in ".!?…":
+                break
+        first = first[:6]
         plan["motion"].append({"start": 0.15, "end": min(dur, 2.3), "type": "title",
                                "text": " ".join(first).strip(" ,.").upper()})
     cta = mc.get("cta")
@@ -140,7 +145,8 @@ def apply_style(ws, style):
     from .common import load_json
     old = load_json(ws.plan, {}) or {}
     plan = auto_plan(ws, style, ws.base_transcript())
-    plan["motion"] += [m for m in old.get("motion", []) if m.get("type") == "hyperframes"]
+    # cartes posées à la main gardées ; celles de l'habillage auto sont refaites avec le nouveau style
+    plan["motion"] += [m for m in old.get("motion", []) if m.get("type") == "hyperframes" and not m.get("auto")]
     for k in ("sfx", "emphasis_words", "music", "notes", "voiceover"):
         if old.get(k):
             plan[k] = old[k]

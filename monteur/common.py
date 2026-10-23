@@ -136,7 +136,13 @@ def load_style(name_or_path=None):
         p = STYLES / f"{name_or_path}.json"
     if not p.exists():
         raise FileNotFoundError(f"Style introuvable : {name_or_path}")
-    return deep_merge(style, load_json(p))
+    own = load_json(p) or {}
+    style = deep_merge(style, own)
+    # typo de la bibliothèque du style (copié, charte) : titres dans la police « display » du style, pas Montserrat
+    lib_fonts = (own.get("library") or {}).get("fonts") or {}
+    if lib_fonts.get("display") and not (own.get("motion") or {}).get("font"):
+        style["motion"]["font"] = lib_fonts["display"]
+    return style
 
 
 class Workspace:
@@ -163,7 +169,31 @@ class Workspace:
         return self.cut_video if self.cut_video.exists() else self.source
 
     def base_transcript(self):
-        return load_json(self.cut_transcript) if self.cut_video.exists() else load_json(self.transcript)
+        t = load_json(self.cut_transcript) if self.cut_video.exists() else load_json(self.transcript)
+        if t and t.get("words"):  # projets déjà transcrits : élisions recollées à la lecture
+            t = {**t, "words": merge_elisions(t["words"])}
+        return t
+
+
+APOS = ("'", "’")
+
+
+def merge_elisions(words):
+    """Whisper découpe souvent les élisions et traits d'union : « c » + « 'est », « l' » + « homme », « peut » + « -être ».
+    Les sous-titres affichaient « C 'EST » : on recolle (horodatage du premier au dernier morceau)."""
+    out = []
+    for w in words or []:
+        t = (w.get("w") or "").strip()
+        if not t:
+            continue
+        prev = out[-1]["w"] if out else ""
+        if out and (t.startswith(APOS) or (t.startswith("-") and len(t) > 1 and t[1:2].isalpha())
+                    or prev.endswith(APOS) or prev.endswith("-")):
+            out[-1] = {**out[-1], "w": prev + t, "end": max(out[-1]["end"], w["end"]),
+                       "p": min(out[-1].get("p", 1), w.get("p", 1))}
+        else:
+            out.append({**w, "w": t})
+    return out
 
 
 def which(binary):

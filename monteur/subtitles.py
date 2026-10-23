@@ -62,7 +62,10 @@ def group_words(words, max_words, max_chars, gap=0.45):
 
 
 def build_subtitles(transcript, plan, style, w, h, out):
-    c = style["subtitles"]
+    from .fonts import is_bold_face, resolve
+    c = dict(style["subtitles"])
+    c["font"] = resolve(c["font"], 800)  # police du style réellement présente (téléchargée au besoin)
+    bold = 0 if is_bold_face(c["font"]) else -1
     base = min(w, h)
     size = int(c["size"] * base * 1.15)
     align = {"lower": 2, "center": 2, "upper": 8}.get(c["position"], 2)
@@ -75,7 +78,7 @@ def build_subtitles(transcript, plan, style, w, h, out):
     else:
         border, ow = 1, max(1, round(c["outline_w"] * base))
     st = (f"Style: Sub,{c['font']},{size},{ass_color(c['primary'])},{ass_color(c['highlight'])},"
-          f"{ass_color(c['outline'])},{ass_color('#000000', 0x80)},-1,0,0,0,100,100,0,0,{border},"
+          f"{ass_color(c['outline'])},{ass_color('#000000', 0x80)},{bold},0,0,0,100,100,0,0,{border},"
           f"{ow},{c['shadow']},{align},{int(w * c.get('margin_l', .06))},{int(w * c.get('margin_r', .06))},{mv},1")
     lines = header(w, h, [st])
     words = [dict(x, idx=i) for i, x in enumerate(transcript["words"])]
@@ -122,15 +125,18 @@ def build_subtitles(transcript, plan, style, w, h, out):
 
 def build_motion(plan, style, w, h, out):
     """Animations texte natives (titre d'accroche, lower-third, callout)."""
-    m = style["motion"]
+    from .fonts import is_bold_face, style_fonts
+    m = dict(style["motion"])
+    m["font"] = style_fonts(style)["title"]   # police « display » du style
+    b = 0 if is_bold_face(m["font"]) else -1
     base = min(w, h)
     col, acc = ass_color(m["color"]), ass_color(m["accent"])
     styles = [
-        f"Style: Title,{m['font']},{int(base * .11)},{col},{acc},{ass_color('#000000')},&H80000000,-1,0,0,0,100,100,0,0,1,{max(2, base // 140)},3,5,40,40,0,1",
-        f"Style: Lower,{m['font']},{int(base * .05)},{ass_color('#111111')},{acc},{acc},&H00000000,-1,0,0,0,100,100,0,0,3,{base // 70},0,1,0,0,0,1",
-        f"Style: CTA,{m['font']},{int(base * .085)},{ass_color('#111111')},{col},{acc},&H00000000,-1,0,0,0,100,100,0,0,3,{base // 45},0,5,40,40,0,1",
-        f"Style: Chapter,{m['font']},{int(base * .09)},{col},{acc},{ass_color('#000000')},&HA0000000,-1,0,0,0,100,100,2,0,1,{max(2, base // 160)},4,5,60,60,0,1",
-        f"Style: Callout,{m['font']},{int(base * .075)},{acc},{col},{ass_color('#000000')},&H80000000,-1,0,0,0,100,100,0,0,1,{max(2, base // 160)},2,8,40,40,{int(h * .1)},1",
+        f"Style: Title,{m['font']},{int(base * .11)},{col},{acc},{ass_color('#000000')},&H80000000,{b},0,0,0,100,100,0,0,1,{max(2, base // 140)},3,5,40,40,0,1",
+        f"Style: Lower,{m['font']},{int(base * .05)},{ass_color('#111111')},{acc},{acc},&H00000000,{b},0,0,0,100,100,0,0,3,{base // 70},0,1,0,0,0,1",
+        f"Style: CTA,{m['font']},{int(base * .085)},{ass_color('#111111')},{col},{acc},&H00000000,{b},0,0,0,100,100,0,0,3,{base // 45},0,5,40,40,0,1",
+        f"Style: Chapter,{m['font']},{int(base * .09)},{col},{acc},{ass_color('#000000')},&HA0000000,{b},0,0,0,100,100,2,0,1,{max(2, base // 160)},4,5,60,60,0,1",
+        f"Style: Callout,{m['font']},{int(base * .075)},{acc},{col},{ass_color('#000000')},&H80000000,{b},0,0,0,100,100,0,0,1,{max(2, base // 160)},2,8,40,40,{int(h * .1)},1",
     ]
     lines = header(w, h, styles)
     n = 0
