@@ -7,6 +7,7 @@ Les cartes viennent de la bibliothèque du style (library.cards) quand c'est pos
 ou si un rendu échoue, on contourne : animation texte native (callout) à la place, le montage n'est jamais bloqué.
 Les éléments posés ici portent "auto": true dans plan.json et sont remplacés au prochain habillage.
 """
+import json
 import re
 import shutil
 
@@ -73,6 +74,75 @@ def numbers(words):
     return out
 
 
+NAME_INTRO = [("moi", "c'est"), ("je", "m'appelle"), ("je", "suis"), ("ici",), ("c'est",)]
+NOT_NAMES = {"un", "une", "le", "la", "les", "pas", "très", "trop", "ici", "là", "content", "contente", "heureux",
+             "heureuse", "ravi", "ravie", "en", "de", "du", "vraiment", "sûr", "sûre", "désolé", "désolée"}
+LIST_MARKERS = {"premièrement": 1, "deuxièmement": 2, "troisièmement": 3, "quatrièmement": 4, "cinquièmement": 5,
+                "d'abord": 1, "ensuite": 2, "puis": 2, "enfin": 9, "finalement": 9, "primo": 1, "secundo": 2,
+                "tertio": 3}
+MAX_D = {"medaillon.nom": 2.8, "mot.punch": 1.6, "titre.barre": 2.6}  # un nom ou un mot ne reste pas 4 s
+PREFER = {"name": ["medaillon.nom"], "list": ["surlignage.liste", "ecran.rail", "classement.top", "programme.chapitres"],
+          "number": ["stat.courbe"], "price": ["prix.promo"], "punch": ["mot.punch", "titre.barre"]}
+
+
+def _clean(w):
+    return w.strip(".,!?;:«»\"'…")
+
+
+def detect_name(words):
+    """« Bienvenue, moi c'est Soprador » / « je m'appelle Léa Martin » → (t, « Soprador »)."""
+    toks = [norm(w["w"]).replace("'", "'") for w in words[:40]]
+    raw = [w["w"].lower().replace("’", "'") for w in words[:40]]
+    for i in range(len(raw)):
+        for pat in NAME_INTRO:
+            if tuple(_clean(x) for x in raw[i:i + len(pat)]) == pat:
+                j = i + len(pat)
+                name = []
+                while j < len(words) and len(name) < 3:
+                    w = _clean(words[j]["w"])
+                    if not w or not w[0].isupper() or norm(w) in NOT_NAMES:
+                        break
+                    name.append(w)
+                    if words[j]["w"].rstrip()[-1:] in ".,!?":
+                        break
+                    j += 1
+                if name and (len(pat) > 1 or i == 0):
+                    return words[i]["start"], " ".join(name)
+    return None
+
+
+def detect_list(words):
+    """Énumération parlée → (début, fin, [éléments], accroche) ; None s'il y a moins de 2 éléments."""
+    marks = [(i, LIST_MARKERS[_clean(w["w"].lower().replace("’", "'"))]) for i, w in enumerate(words)
+             if _clean(w["w"].lower().replace("’", "'")) in LIST_MARKERS]
+    if len(marks) < 2:
+        return None
+    first = marks[0][0]
+    marks = [m for m in marks if words[m[0]]["start"] - words[first]["start"] < 40][:5]
+    items = []
+    for k, (i, _) in enumerate(marks):
+        stop = marks[k + 1][0] if k + 1 < len(marks) else len(words)
+        it = []
+        for w in words[i + 1:stop]:
+            it.append(_clean(w["w"]))
+            if w["w"].rstrip()[-1:] in ".!?" or len(it) >= 5:
+                break
+        if it:
+            items.append(" ".join(x for x in it if x)[:38])
+    if len(items) < 2:
+        return None
+    lead = [w for w in words[:first] if w["start"] > words[first]["start"] - 6]
+    kicker = " ".join(_clean(w["w"]) for w in lead[-5:]) if lead else "Les étapes"
+    last = marks[-1][0]
+    end = next((w["end"] for w in words[last:] if w["w"].rstrip()[-1:] in ".!?"), words[min(last + 5, len(words) - 1)]["end"])
+    return words[first]["start"], end, items, kicker[:40]
+
+
+def _pick(kind, pref, known):
+    """Carte du style pour ce type de moment (sinon la carte par défaut de la bibliothèque)."""
+    return next((c for c in pref if c in PREFER[kind]), None) or next((c for c in PREFER[kind] if c in known), None)
+
+
 def plan_cards(words, plan, style, nom=None, role=None, max_cards=4, gap=6.0):
     """Choix des cartes et de leurs instants (sans rien rendre)."""
     from .cards import catalog
@@ -80,8 +150,16 @@ def plan_cards(words, plan, style, nom=None, role=None, max_cards=4, gap=6.0):
     pref = [c for c in (style.get("library", {}).get("cards") or []) if c in known]
     dur = plan.get("duration") or (words[-1]["end"] if words else 0)
     picks = []
-    if nom:
-        picks.append((3, 2.4, "medaillon.nom", {"name": nom.upper(), "role": role or ""}, nom))
+    found = None if nom else detect_name(words)
+    if nom or found:
+        who = nom or found[1]
+        t_name = found[0] if found else 2.4
+        picks.append((5, t_name, _pick("name", pref, known), {"name": who.upper(), "role": role or ""}, who))
+    lst = detect_list(words)
+    if lst:
+        cid = _pick("list", pref, known)
+        picks.append((4, lst[0], cid, {"items": ";".join(lst[2]), "kicker": lst[3], "title": lst[3]},
+                      " / ".join(lst[2]), lst[1] - lst[0] + 1.2))
     nums = numbers(words)
     used = set()
     # « 29 € au lieu de 49 » (+ « 40 % ») → carte prix promo
@@ -91,13 +169,13 @@ def plan_cards(words, plan, style, nom=None, role=None, max_cards=4, gap=6.0):
         if nxt and "€" in v["suffix"] + nxt[1]["suffix"] and ("au lieu" in between or "au lieu" in v["caption"].lower()):
             pct = next((n for n in nums if abs(n[0] - t) < 6 and n[1]["suffix"] == "%"), None)
             cur = "€"
-            picks.append((3, t, "prix.promo", {"price": f"{v['value']} {cur}", "old": f"{nxt[1]['value']} {cur}",
+            picks.append((3, t, _pick("price", pref, known), {"price": f"{v['value']} {cur}", "old": f"{nxt[1]['value']} {cur}",
                                                 "badge": f"-{pct[1]['value']} %" if pct else "PROMO",
                                                 "caption": "Offre de lancement"}, f"{v['value']} € au lieu de {nxt[1]['value']} €"))
             used |= {k, nums.index(nxt)} | ({nums.index(pct)} if pct else set())
     for k, (t, vals, txt) in enumerate(nums):
         if k not in used:
-            picks.append((2, t, "stat.courbe", vals, txt))
+            picks.append((2, t, _pick("number", pref, known), vals, txt))
     punch = next((c for c in ("mot.punch", "titre.barre") if c in pref), None)
     if punch and words:
         emph = [i for i in plan.get("emphasis", []) if i < len(words) and words[i]["start"] < dur / 2]
@@ -109,17 +187,29 @@ def plan_cards(words, plan, style, nom=None, role=None, max_cards=4, gap=6.0):
     # seuls les B-roll trouvés occupent l'image (un B-roll sans fichier n'apparaîtra pas)
     busy += [(b["start"], b["end"]) for b in plan.get("broll", []) if b.get("file")
              and b.get("layout", "full") in ("full", "fullscreen")]
+    title_end = max([m["end"] for m in plan.get("motion", []) if m.get("type") == "title"] or [0])
     chosen = []
-    for prio, t, cid, vals, txt in sorted(picks, key=lambda p: (-p[0], p[1])):
+    for prio, t, cid, vals, txt, *want in sorted(picks, key=lambda p: (-p[0], p[1])):
+        if not cid:
+            continue
+        if cid == "medaillon.nom" and t < title_end + 0.15:  # le nom arrive juste après le titre d'accroche
+            t = title_end + 0.2
         t = round(max(0.2, t - 0.15), 2)
-        if any(s <= t < e for s, e in busy) or any(abs(t - c["start"]) < gap for c in chosen):
+        for c in chosen:  # une carte déjà posée laisse la place si elle a eu le temps d'être lue (≥ 1,5 s)
+            if c["start"] + 1.5 <= t < c["end"] + gap / 6:
+                old_iv = (c["start"] - gap / 6, c["end"] + gap / 6)
+                c["end"] = round(t - gap / 6, 2)
+                c["duration"] = round(c["end"] - c["start"], 2)
+                busy[busy.index(old_iv)] = (c["start"] - gap / 6, c["end"] + gap / 6)
+        if any(s <= t < e for s, e in busy):  # pas de chevauchement (titre, CTA, autre carte, B-roll plein cadre)
             continue
         room = min([s for s, _ in busy if s > t] + [dur - 0.3]) - t  # carte raccourcie pour tenir dans le créneau
-        d = min(float(known[cid].get("duration", 4)), room)
-        if d < min(2.5, float(known[cid].get("duration", 4))):
+        base_d = min(float(known[cid].get("duration", 4)), MAX_D.get(cid, 99))
+        d = min(max(base_d, want[0] if want else 0), room)
+        if d < min(2.5, base_d):
             continue
         chosen.append({"start": t, "end": round(t + d, 2), "card": cid, "vars": vals, "text": txt, "duration": round(d, 2)})
-        busy.append((t, t + d))
+        busy.append((t - gap / 6, round(t + d, 2) + gap / 6))  # un souffle entre deux cartes
         if len(chosen) >= max_cards:
             break
     return sorted(chosen, key=lambda c: c["start"])
@@ -154,29 +244,57 @@ def dress(ws, style, nom=None, role=None, max_cards=4, use_hyperframes=True, dry
     if style["format"].get("layout") == "split":
         H, layout = int(H * style["format"].get("split", 0.42)) // 2 * 2, "panel"
     done = []
+    import hashlib
+    from .cards import theme
+    th = theme(style)
     for c in chosen:
         ok = False
         if hf:
             try:
-                name = f"auto-{c['card'].replace('.', '-')}-{int(c['start'] * 10):04d}"
-                card_render(ws, c["card"], c["start"], c["vars"], W, H, c.get("duration"), name=name, layout=layout)
-                plan = load_json(ws.plan)
-                for m in plan["motion"]:
-                    if m.get("name") == name:
-                        m["auto"] = True
-                save_json(ws.plan, plan)
+                # même carte, mêmes textes, même style → même fichier : pas de nouveau rendu à chaque préparation
+                sig = hashlib.sha1(json.dumps([c["card"], c["vars"], W, H, c.get("duration"), th],
+                                              sort_keys=True, default=str).encode()).hexdigest()[:8]
+                name = f"auto-{c['card'].replace('.', '-')}-{sig}"
+                ready = next((p for p in (ws.dir / "assets" / "motion").glob(name + ".*") if p.suffix in (".mov", ".mp4")),
+                             None) if (ws.dir / "assets" / "motion").exists() else None
+                if ready:
+                    from .cards import load as card_load
+                    full = card_load(c["card"]).get("mode") == "full"
+                    plan = load_json(ws.plan)
+                    plan["motion"].append({"type": "hyperframes", "name": name, "file": str(ready), "start": c["start"],
+                                           "end": c["end"], "layout": layout or ("full" if full else "overlay"),
+                                           "auto": True, "card": c["card"]})
+                    save_json(ws.plan, plan)
+                else:
+                    card_render(ws, c["card"], c["start"], c["vars"], W, H, c.get("duration"), name=name, layout=layout,
+                                style=style)
+                    plan = load_json(ws.plan)
+                    for m in plan["motion"]:
+                        if m.get("name") == name:
+                            m["auto"], m["card"] = True, c["card"]
+                    save_json(ws.plan, plan)
                 ok = True
             except (Exception, SystemExit) as e:
                 log(f"⚠️  Carte {c['card']} à {c['start']}s : rendu Hyperframes impossible ({str(e).splitlines()[0][:120]})"
                     " → animation texte.")
-        if not ok:  # repli natif (ASS) : jamais de montage bloqué
+        if not ok:  # repli natif (ASS), adapté au type de moment : jamais de montage bloqué
             plan = load_json(ws.plan)
-            typ = "lower_third" if c["card"] == "medaillon.nom" else "callout"
-            text = f"{c['text']} — {c['vars'].get('role')}" if typ == "lower_third" and c["vars"].get("role") else c["text"]
-            plan["motion"].append({"start": c["start"], "end": c["end"], "type": typ, "text": text.upper()
-                                   if typ == "callout" else text, "auto": True, "sfx": "pop"})
+            if c["card"] == "medaillon.nom":
+                role = c["vars"].get("role")
+                plan["motion"].append({"start": c["start"], "end": c["end"], "type": "lower_third", "auto": True,
+                                       "text": f"{c['text']} — {role}" if role else c["text"]})
+            elif "items" in c["vars"]:  # liste : un callout par élément, au fil de l'énumération
+                items = c["vars"]["items"].split(";")
+                step = (c["end"] - c["start"]) / max(1, len(items))
+                for k, it in enumerate(items):
+                    plan["motion"].append({"start": round(c["start"] + k * step, 2),
+                                           "end": round(c["start"] + (k + 1) * step - 0.1, 2), "type": "callout",
+                                           "text": f"{k + 1}. {it}".upper(), "auto": True})
+            else:
+                plan["motion"].append({"start": c["start"], "end": c["end"], "type": "callout", "auto": True,
+                                       "text": c["text"].upper()})
             save_json(ws.plan, plan)
         done.append({**c, "hyperframes": ok})
-        log(f"  ✓ {c['start']:6.2f}s {c['card']:<14} {'Hyperframes' if ok else 'texte'} — {c['text']}")
+        log(f"  ✓ {c['start']:6.2f}s {c['card']:<16} {'Hyperframes' if ok else 'texte'} — {c['text']}")
     log(f"Habillage : {len(done)} carte(s) posée(s), dont {sum(d['hyperframes'] for d in done)} Hyperframes.")
     return done

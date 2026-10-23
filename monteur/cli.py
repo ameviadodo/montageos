@@ -336,7 +336,7 @@ def cmd_carte(a):
     layout = None
     if style["format"].get("layout") == "split":
         H, layout = int(H * style["format"].get("split", 0.42)) // 2 * 2, "panel"
-    card_render(ws, a.card, a.start, values, W, H, a.duree, layout=layout)
+    card_render(ws, a.card, a.start, values, W, H, a.duree, layout=layout, style=style)
 
 
 def cmd_avant_apres(a):
@@ -407,9 +407,11 @@ def cmd_prep(a):
         apply_style(ws, style)
     if not a.no_broll:
         fetch(ws, portrait(ws, style))
-    if getattr(a, "hyperframes", False) or getattr(a, "nom", None):
+    auto = (style.get("habillage") or {}).get("auto", True) and (style.get("library") or {}).get("cards")
+    if getattr(a, "hyperframes", False) or getattr(a, "nom", None) or auto:  # cartes du style posées sur la vidéo
         from .habillage import dress
-        dress(ws, style, getattr(a, "nom", None), getattr(a, "role", None))
+        dress(ws, style, getattr(a, "nom", None), getattr(a, "role", None),
+              use_hyperframes=(style.get("habillage") or {}).get("hyperframes", True))
     print(f"\nDossier : {ws.dir}\nCoupe : {edl['stats']}\nÉdite {ws.plan} puis : monteur render {a.video}")
 
 
@@ -438,6 +440,9 @@ def cmd_appliquer(a):
     if not a.no_broll:
         from .broll import fetch
         fetch(ws, portrait(ws, style))
+    if (style.get("habillage") or {}).get("auto", True) and (style.get("library") or {}).get("cards"):
+        from .habillage import dress  # le style s'applique aussi par ses cartes (polices et couleurs du style)
+        dress(ws, style, use_hyperframes=(style.get("habillage") or {}).get("hyperframes", True))
 
 
 def cmd_retouche(a):

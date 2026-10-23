@@ -15,3 +15,5 @@ ui/activity.json
 # coupe-facecam : kit Agence Agentique sous licence membres (ne pas publier) — installé à la main, voir docs/coupe-facecam.md
 skills/coupe-facecam/
 rushs/
+assets/models/
+assets/sfx/.synth.json

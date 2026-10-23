@@ -610,7 +610,7 @@ function drawTimeline() {
     <div class="trk"><span>VO · vidéo</span><div class="lane">${cuts.map(c => `<div class="blk cut" title="coupe à ${c.toFixed(2)}s" style="left:${pct(c)}"></div>`).join("")}</div></div>
     <div class="trk"><span>CUT · raccords</span><div class="lane">${(P.transitions ?? p.transitions ?? []).map(x => `<div class="blk tr" title="${esc(x.kind)} à ${x.t.toFixed(2)}s" style="left:${pct(x.t)}">${esc({zoomcut: "Z", flash: "F", dip: "N", whip: "W", glitch: "G", fondu: "≈"}[x.kind] || "·")}</div>`).join("")}</div></div>
     <div class="trk"><span>TXT · sous-titres</span><div class="lane">${(p.subs || []).map(s => blk("sub", s.start, s.end, s.text)).join("")}</div></div>
-    <div class="trk"><span>SFX · sons</span><div class="lane">${(p.sfx_events || []).map(s => blk("fx", s.t, s.t + .5, s.name)).join("")}</div></div>
+    <div class="trk"><span>SFX · sons</span><div class="lane">${(p.sfx_events || []).map(s => blk("fx", s.t, s.t + .5, s.name + (s.why ? " · " + s.why : ""))).join("")}</div></div>
     <div class="trk"><span>B-roll · illus</span><div class="lane">${P.broll.map((b, i) => blk("br", b.start, b.end, (b.file ? "" : "⏳ ") + b.query, `data-k="broll" data-i="${i}"`)).join("")}</div></div>
     <div class="trk"><span>Zooms</span><div class="lane">${P.zooms.map((z, i) => blk("zm", z.start, z.end, z.kind, `data-k="zooms" data-i="${i}"`)).join("")}</div></div>
     <div class="trk"><span>Anim · cartes</span><div class="lane">${P.motion.map((m, i) => blk("an", m.start, m.end, m.name || m.text || m.type, `data-k="motion" data-i="${i}"`)).join("")}</div></div>
@@ -672,7 +672,13 @@ function afterEdit(video) {  // modification du plan → draft refait (si « Dra
 }
 let _saveT;
 function autosave() { clearTimeout(_saveT); _saveT = setTimeout(() => savePlan().then(() => toast("Plan enregistré (lance un draft pour le voir)")), 700); }
-async function savePlan(notify) { if (!STATE.plan) return; await api("/api/plan", {video: STATE.p.video, plan: STATE.plan}); if (notify) toast("Plan enregistré"); }
+async function savePlan(notify) {
+  if (!STATE.plan) return;
+  const r = await api("/api/plan", {video: STATE.p.video, plan: STATE.plan, mtime: STATE.p.plan_mtime});
+  if (r.plan) { STATE.plan = r.plan; STATE.p.plan = r.plan; STATE.p.plan_mtime = r.plan_mtime; toast(r.error); drawTimeline(); drawInspector(STATE.lib); return; }
+  if (r.plan_mtime) STATE.p.plan_mtime = r.plan_mtime;
+  if (notify) toast("Plan enregistré");
+}
 
 // ---------- Bibliothèques ----------
 const RATIO = {"9:16": [1080, 1920], "16:9": [1920, 1080], "1:1": [1080, 1080], "4:5": [1080, 1350], "3:4": [1080, 1440], "2:3": [1080, 1620], "21:9": [2520, 1080]};

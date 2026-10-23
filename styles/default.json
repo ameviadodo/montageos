@@ -87,7 +87,11 @@
       "whip": "whoosh",
       "glitch": "glitch",
       "flash": "camera"
-    }
+    },
+    "under_db": 17,
+    "min_gap": 1.1,
+    "max_per_minute": 14,
+    "on_card": "swoosh"
   },
   "motion": {
     "enabled": true,

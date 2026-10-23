@@ -20,6 +20,11 @@ Générés au rendu depuis `transcript_cut.json` → `RUSH.monteur/subtitles.ass
 | `outline_w`, `shadow` | contour / ombre | |
 | `hide_during_title` | masque pendant titre & CTA | défaut `true` |
 
+## Polices (respectées à l'identique)
+- `subtitles.font` et `motion.font` (titres) sont résolues dans `assets/fonts/` par famille, nom complet ou famille + graisse ; une police absente est **téléchargée depuis Google Fonts** dans la bonne graisse (ex. « Plus Jakarta Sans ExtraBold ») ; sinon, la plus proche installée est utilisée et le journal le dit (`⚠️ Police « … » introuvable`). Dépose le .ttf exact dans `assets/fonts/` pour une police non Google.
+- Sans `motion.font`, les titres prennent `library.fonts.display` du style (styles copiés, chartes) ; les cartes animées prennent `display`, `body` et `mono`.
+- Les élisions et traits d'union découpés par Whisper (« C 'EST », « PEUT -ÊTRE ») sont recollés.
+
 ## Ce que tu décides (plan.json)
 - `emphasis_words` : chiffres, bénéfices, mots émotionnels. 1 mot fort par bloc max, sinon plus rien ne ressort.
 - `broll[i].hide_subs: true` sur un visuel déjà textuel.

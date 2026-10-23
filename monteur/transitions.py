@@ -31,6 +31,13 @@ def cut_points(ws):
     return pts
 
 
+def phrase_points(ws, pause=0.35):
+    """Débuts de phrase (après une pause) sur la timeline montée : points de raccord quand il y a peu de coupes."""
+    words = (ws.base_transcript() or {}).get("words") or []
+    return [round(w["start"] - 0.02, 3) for i, w in enumerate(words)
+            if i and (w["start"] - words[i - 1]["end"] >= pause or words[i - 1]["w"].rstrip()[-1:] in ".!?")]
+
+
 def auto_transitions(ws, style, dur=None):
     """Transitions déduites du style : cut.transition, cut.transition_every (1 = chaque coupe), cut.transition_gap."""
     c = style.get("cut", {})
@@ -40,7 +47,10 @@ def auto_transitions(ws, style, dur=None):
     every = max(1, int(c.get("transition_every", 1)))
     gap = float(c.get("transition_gap", 1.2))
     out, last = [], -99.0
-    for i, t in enumerate(cut_points(ws)):
+    pts = cut_points(ws)
+    if dur and len(pts) < dur / 8:  # trop peu de coupes (vidéo déjà coupée, voix off…) : on marque aussi les phrases
+        pts = sorted(set(pts) | {p for p in phrase_points(ws) if all(abs(p - q) > 0.4 for q in pts)})
+    for i, t in enumerate(pts):
         if i % every or t - last < gap or t < 0.5 or (dur and t > dur - 0.3):
             continue
         out.append({"t": t, "kind": MIX[len(out) % len(MIX)] if kind == "mix" else kind})

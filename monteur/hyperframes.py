@@ -2,6 +2,7 @@
 import json
 import re
 import shutil
+from pathlib import Path
 
 from .common import load_json, log, run, save_json
 
@@ -31,9 +32,14 @@ def vendor_cdn(proj):
     m = re.search(r"https://cdn\.jsdelivr\.net/npm/gsap@([\d.]+)/dist/gsap\.min\.js", html.read_text(encoding="utf-8"))
     if not m:
         return
-    res = run(["npm", "install", "--silent", "--no-audit", "--no-fund", f"gsap@{m.group(1)}"], cwd=proj, check=False)
-    src = proj / "node_modules" / "gsap" / "dist" / "gsap.min.js"
-    if res.returncode == 0 and src.exists():
+    from .common import ASSETS
+    src = ASSETS / "vendor" / "gsap.min.js"  # copie locale de setup.sh : pas de npm ni de réseau à chaque carte
+    if not src.exists():
+        res = run(["npm", "install", "--silent", "--no-audit", "--no-fund", f"gsap@{m.group(1)}"], cwd=proj, check=False)
+        src = proj / "node_modules" / "gsap" / "dist" / "gsap.min.js"
+        if res.returncode != 0:
+            src = Path("/nonexistent")
+    if src.exists():
         (proj / "vendor").mkdir(exist_ok=True)
         shutil.copy(src, proj / "vendor" / "gsap.min.js")
         html.write_text(html.read_text(encoding="utf-8").replace(m.group(0), "vendor/gsap.min.js"), encoding="utf-8")

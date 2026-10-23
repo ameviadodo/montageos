@@ -170,7 +170,8 @@ def import_transcript(ws, path, language="fr"):
             silences = detect_silences(ws.source, -35, 0.12)
     except Exception:
         pass
-    words = segments_to_words(load(path, duration), silences)
+    from .common import merge_elisions
+    words = merge_elisions(segments_to_words(load(path, duration), silences))
     for derived in (ws.cut_video, ws.cut_transcript):
         Path(derived).unlink(missing_ok=True)
     if ws.plan.exists():  # le plan dépendait de l'ancienne transcription : on le garde de côté

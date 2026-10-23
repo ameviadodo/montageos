@@ -216,7 +216,8 @@ class Handler(BaseHTTPRequestHandler):
                 c = style["subtitles"]
                 subs = [{"start": g[0]["start"], "end": g[-1]["end"], "text": " ".join(w["w"] for w in g)}
                         for g in group_words(tr["words"], c["max_words"], c["max_chars"])]
-            sfx = [{"t": e["t"], "name": Path(e["file"]).stem} for e in auto_events(load_json(ws.plan, {}), style)]
+            sfx = [{"t": e["t"], "name": e["name"], "why": e["why"]}
+                   for e in auto_events(load_json(ws.plan, {}), style, None, (tr or {}).get("words"))]
         except Exception:
             pass
         from .transitions import auto_transitions, cut_points
@@ -232,6 +233,7 @@ class Handler(BaseHTTPRequestHandler):
         from .voixoff import settings as vo_settings
         vs = ws.dir / "voixoff" / "script.txt"
         return {**i, "dir": str(ws.dir), "plan": load_json(ws.plan),
+                "plan_mtime": ws.plan.stat().st_mtime if ws.plan.exists() else 0,
                 "voiceover": vo_settings(ws, plan or None), "vo_script": vs.read_text(encoding="utf-8") if vs.exists() else "", "transitions": trans, "cut_points": cut_points(ws),
                 "history": list(reversed(entries(ws)))[:15],
                 "plan_style": plan.get("style") or (i["style"] if plan else None),  # plans d'avant : style du projet
@@ -417,10 +419,15 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/plan":
                 from .history import snapshot
                 ws = Workspace(self.video_path(body["video"]))
+                # le plan a été réécrit côté moteur (carte posée, style appliqué, retouche…) depuis que la page l'a lu :
+                # on refuse d'écraser ces changements avec l'ancienne copie de la page
+                if body.get("mtime") is not None and ws.plan.exists() and ws.plan.stat().st_mtime > float(body["mtime"]) + 0.5:
+                    return self.send(409, {"error": "plan modifié entre-temps (carte, style, retouche) : rechargé",
+                                           "plan": load_json(ws.plan), "plan_mtime": ws.plan.stat().st_mtime})
                 if load_json(ws.plan) != body["plan"]:  # un instantané seulement si quelque chose change
                     snapshot(ws, body.get("label") or "Plan modifié dans le Studio")
                 save_json(ws.plan, body["plan"])
-                return self.send(200, {"ok": True})
+                return self.send(200, {"ok": True, "plan_mtime": ws.plan.stat().st_mtime})
             if u.path == "/api/theme":
                 set_setting(theme=body["theme"])
                 return self.send(200, {"ok": True})
