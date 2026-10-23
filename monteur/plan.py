@@ -45,8 +45,10 @@ def emphasis_words(words, ratio=0.12):
 
 
 def auto_plan(ws, style, transcript):
+    from .voixoff import end_time, settings as vo_settings
     video = ws.base_video()
-    dur = probe(video)["duration"]
+    vo = vo_settings(ws)
+    dur = max(probe(video)["duration"], end_time(vo))  # voix off plus longue que la vidéo : dernière image prolongée
     words = transcript["words"] if transcript else []
     ph = phrases(words) if words else []
     plan = {"version": 1, "duration": round(dur, 3), "zooms": [], "broll": [], "motion": [], "sfx": [],
@@ -122,6 +124,8 @@ def auto_plan(ws, style, transcript):
                                "subtext": cta.get("subtext", ""), "sfx": "ding"})
     from .transitions import auto_transitions
     plan["transitions"] = auto_transitions(ws, style, dur)
+    if vo:
+        plan["voiceover"] = vo
     plan["mode"] = style.get("mode", style.get("name"))
     plan["style"] = style.get("name")
     save_json(ws.plan, plan)
@@ -137,7 +141,7 @@ def apply_style(ws, style):
     old = load_json(ws.plan, {}) or {}
     plan = auto_plan(ws, style, ws.base_transcript())
     plan["motion"] += [m for m in old.get("motion", []) if m.get("type") == "hyperframes"]
-    for k in ("sfx", "emphasis_words", "music", "notes"):
+    for k in ("sfx", "emphasis_words", "music", "notes", "voiceover"):
         if old.get(k):
             plan[k] = old[k]
     save_json(ws.plan, plan)

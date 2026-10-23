@@ -59,7 +59,7 @@ def _num(seg, *keys):
     return None
 
 
-def parse_json(src):
+def parse_json(src, duration=None):
     data = json.loads(src)
     if isinstance(data, dict):
         data = data.get("segments") or data.get("utterances") or data.get("results") or data.get("words") or []
@@ -67,7 +67,6 @@ def parse_json(src):
     for s in data:
         a = _num(s, "start", "startTime", "start_time", "from", "offset")
         b = _num(s, "end", "endTime", "end_time", "to")
-        ms = ms or (b or 0) > 36000            # > 10 h en « secondes » → c'étaient des millisecondes
         seg = {"start": a, "end": b, "text": _clean(str(s.get("text") or s.get("content") or s.get("word") or ""))}
         if s.get("words"):
             seg["words"] = [{"w": _clean(str(w.get("word") or w.get("text") or w.get("w") or "")),
@@ -75,6 +74,9 @@ def parse_json(src):
                              "end": _num(w, "end", "endTime", "end_time")} for w in s["words"]]
         if seg["start"] is not None and (seg["text"] or seg.get("words")):
             segs.append(seg)
+    # millisecondes ? > 10 h en « secondes », ou (durée du rush connue) bien au-delà du rush alors qu'en ms ça tombe juste
+    top = max([s["end"] or s["start"] for s in segs] or [0])
+    ms = top > 36000 or bool(duration and top > duration * 1.5 + 5 and top / 1000 <= duration * 1.5 + 5)
     if ms:
         for s in segs:
             s["start"], s["end"] = s["start"] / 1000, (s["end"] or s["start"]) / 1000
@@ -135,13 +137,13 @@ def segments_to_words(segs, silences=None):
     return words
 
 
-def load(path):
+def load(path, duration=None):
     path = Path(path)
     src = path.read_text(encoding="utf-8-sig", errors="replace")
     segs = None
     if path.suffix.lower() == ".json" or src.lstrip().startswith(("[", "{")):
         try:
-            segs = parse_json(src)
+            segs = parse_json(src, duration)
         except json.JSONDecodeError:  # « [00:05] texte » commence aussi par un crochet
             if path.suffix.lower() == ".json":
                 raise SystemExit(f"{path.name} n'est pas un JSON valide.")
@@ -158,15 +160,17 @@ def load(path):
 
 def import_transcript(ws, path, language="fr"):
     """Écrit <rush>.monteur/transcript.json ; les fichiers dérivés de l'ancienne transcription sont écartés."""
-    silences = []
+    silences, duration = [], None
     try:  # cale les mots sur la voix réelle (pauses en fin de phrase, virgules)
         from .common import probe
-        if probe(ws.source)["has_audio"]:
+        src_info = probe(ws.source)
+        duration = src_info["duration"]
+        if src_info["has_audio"]:
             from .cut import detect_silences
             silences = detect_silences(ws.source, -35, 0.12)
     except Exception:
         pass
-    words = segments_to_words(load(path), silences)
+    words = segments_to_words(load(path, duration), silences)
     for derived in (ws.cut_video, ws.cut_transcript):
         Path(derived).unlink(missing_ok=True)
     if ws.plan.exists():  # le plan dépendait de l'ancienne transcription : on le garde de côté

@@ -43,14 +43,17 @@ def detect(video, every=0.5):
 
 def track(ws, video):
     """Calcule (et met en cache) la position du visage pour la vidéo de base."""
+    from pathlib import Path
     cache = ws.dir / "focus.json"
+    st = Path(video).stat()
+    stamp = [int(st.st_mtime), st.st_size]  # cut.mp4 réécrit (nouvelle coupe) : même chemin, autre timeline
     data = load_json(cache)
-    if data and data.get("video") == str(video):
+    if data and data.get("video") == str(video) and data.get("stamp") == stamp:
         return data
     faces = detect(video)
     if faces is None:
         return None
-    data = {"video": str(video), "faces": faces}
+    data = {"video": str(video), "stamp": stamp, "faces": faces}
     if faces:
         data["median"] = [statistics.median(f[1] for f in faces), statistics.median(f[2] for f in faces)]
     save_json(cache, data)

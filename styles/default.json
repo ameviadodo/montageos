@@ -100,7 +100,9 @@
     "lufs": -14,
     "music": null,
     "music_volume": 0.12,
-    "duck": true
+    "duck": true,
+    "music_under_db": 21,
+    "hook_under_db": 12
   },
   "export": {
     "crf": 18,
@@ -122,5 +124,8 @@
       "1:1",
       "4:5"
     ]
+  },
+  "look": {
+    "dark_style": false
   }
 }

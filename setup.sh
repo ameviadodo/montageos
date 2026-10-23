@@ -57,8 +57,8 @@ PYV="$(pyver "$VPY")"
 say "Python : $VPY ($PYV)"
 "$VPY" -m pip install -q --upgrade pip
 # Paquets légers d'abord (voix off, téléchargement, vision) : ils ne doivent pas dépendre de Whisper
-PKGS=(edge-tts)
-[ "$LEGER" = 0 ] && PKGS+=(yt-dlp "opencv-python-headless<5")
+PKGS=(edge-tts requests)
+[ "$LEGER" = 0 ] && PKGS+=(yt-dlp "opencv-python-headless<5" numpy onnxruntime)   # onnxruntime : écoute Silero de coupe-facecam
 [ "$AI" = 1 ] && PKGS+=(google-genai)
 say "Paquets Python : ${PKGS[*]}"
 "$VPY" -m pip install -q --upgrade --prefer-binary "${PKGS[@]}" || say "⚠️  Certains paquets n'ont pas pu s'installer (voir ci-dessus)."

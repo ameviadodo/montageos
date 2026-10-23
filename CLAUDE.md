@@ -6,7 +6,11 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 - Point d'entrée : skill `monteuros` (chef d'orchestre). Les autres skills (`skills/`) détaillent chaque métier :
   `monteur-setup`, `monteur-decoupe`, `monteur-sous-titres`, `monteur-illustrations`, `monteur-sfx`,
   `monteur-zooms-animations`, `monteur-copie-style`, `monteur-studio-ia`, `monteur-formats`, `monteur-charte`,
-  `monteur-retours` (draft + vérif → retours frame par frame → master), `monteur-bibliotheque` (formats de reel, cartes animées, références).
+  `monteur-retours` (draft + vérif → retours frame par frame → master), `monteur-bibliotheque` (formats de reel, cartes animées, références),
+  `monteur-voix-off` (fichier de voix off ou script → ElevenLabs / Inworld / Edge),
+  `coupe-facecam` (facultatif, non publié — `docs/coupe-facecam.md` : coupe fine d'un rush facecam ; `bin/monteur facecam`).
+- Avant de monter : `bin/monteur analyse RUSH` ; si `a_demander` n'est pas vide (vidéo sans voix), demande à l'utilisateur
+  un fichier de voix off ou un script (propose de l'écrire) avant de lancer la préparation.
 - CLI : `bin/monteur <commande>` (ou `monteur` après `setup.sh`). `bin/monteur --help` pour tout voir.
 - Installation : tu installes toi-même les petites ressources manquantes (`bash setup.sh`, options `--motion`, `--ai`) sans demander. Tu demandes avant toute dépense de crédits (Higgsfield, Magnific, Veo).
 - Le rush n'est jamais modifié ; tout vit dans `<rush>.monteur/`. `plan.json` est le document éditorial que tu améliores (schéma : `skills/monteuros/references/plan-schema.md`).
@@ -16,7 +20,7 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 ## Carte du code
 | fichier | rôle |
 |---|---|
-| `monteur/transcribe.py` | Whisper mot à mot |
+| `monteur/transcribe.py` | Whisper mot à mot ; relais ElevenLabs Scribe si Whisper manque |
 | `monteur/cut.py` | silences, fillers, n-grammes répétés, prises ratées → `edl.json`, `cut.mp4` |
 | `monteur/transitions.py` | types de cut entre les plans (zoom cut, flash, noir, whip, glitch, fondu, mix) |
 | `monteur/plan.py` | plan auto (zooms, B-roll, titre, CTA, emphases) |
@@ -38,3 +42,11 @@ coupe des blancs/hésitations/répétitions → illustrations → zooms rapides 
 | `monteur/cards.py`, `library/cards/` | cartes animées Hyperframes paramétrables |
 | `monteur/layouts.py`, `library/formats/` | formats de reel multi-ratios (Avant/après ; Split carte dans `render.py`) |
 | `monteur/studio.py`, `ui/index.html` | MonteurOS Studio : Projets · Studio · Bibliothèques · Activité |
+| `monteur/voiceover.py` | moteurs de voix : ElevenLabs, Inworld (mots horodatés), Edge, espeak — repli automatique |
+| `monteur/voixoff.py` | voix off d'un projet (fichier ou script) → piste voix + transcription calée, vidéo prolongée si besoin |
+| `monteur/habillage.py` | habillage auto Hyperframes : chiffres, prix promo, mot fort, médaillon (repli texte sans Node 22) |
+| `monteur/adapt.py` | analyse de la vidéo source : voix ?, style/format conseillés, ce qu'il faut demander |
+| `monteur/keys.py` | clés API dans `.env` : état masqué, enregistrement, test de connexion |
+| `monteur/facecam.py`, `skills/coupe-facecam/` | passerelle coupe-facecam (`bin/monteur facecam …`, `importer` → projet MonteurOS) |
+| `monteur/niveaux.py` | niveaux audio mesurés : musique à N dB sous la voix (accroche −12 dB, corps −21 dB) |
+| `monteur/notify.py` | notifications Telegram (`bin/monteur notifier`) |

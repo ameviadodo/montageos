@@ -262,7 +262,7 @@ async function route() {
     $("#rst2").onclick = restartServer;
   }
 }
-const API_VERSION = 4;
+const API_VERSION = 5;
 async function checkServer() {
   let st; try { st = await api("/api/state"); } catch (e) { return; }
   const old = (st.api || 0) < API_VERSION || st.outdated;
@@ -399,10 +399,21 @@ async function vProjet(video) {
       <div class="act"><button class="btn y" data-a="draft">Rendu draft + vérif</button><p>Le geste courant. Rend en qualité brouillon (demi-résolution, ~4× plus vite) puis contrôle le fichier produit : durée, noirs, blancs oubliés, saturation, mots coupés, visuels manquants.</p></div>
       <div class="act"><button class="btn" data-a="render">Rendu master</button><p>Qualité finale, versionnée dans <span class="mono">renders/</span> et copiée en <span class="mono">final.mp4</span>.</p></div>
       <div class="act"><label class="btn" style="text-align:center">Importer une transcription<input type="file" id="trfile" accept=".srt,.vtt,.json,.txt" hidden></label><p>Sans Whisper sur ce PC : dépose le SRT / VTT / JSON exporté de WhisperAI (style « verbatim » pour garder les « euh »), puis « Préparer ».</p></div>
+      <div class="act"><button class="btn" data-a="analyse">Analyser la vidéo</button><p>Voix présente ?, format, rythme → style conseillé, et ce qu'il manque (voix off, script). Résultat ci-dessous.</p></div>
       <div class="act"><button class="btn" data-a="broll">Chercher les B-roll</button><p>Télécharge les illustrations du plan encore vides (Pexels, Pixabay, Wikimedia).</p></div>
       <div class="act"><button class="btn" data-a="livre">Marquer livré</button><p>Passe le projet à l'état « livré ».</p></div>
       <div class="log" id="joblog" style="margin-top:10px">—</div>
     </div>
+    <div class="panel"><span class="cap acc">Voix off${p.voiceover ? ` · ${esc(p.voiceover.how || "")} · ${(+p.voiceover.duration || 0).toFixed(1)} s` : ""}</span>
+      <p class="muted" style="font-size:13px">Vidéo sans voix (produit, B-roll, écran) ou nouvelle narration : dépose la voix off enregistrée, ou écris le script — lu par ElevenLabs, Inworld ou Edge (gratuit). Avec un fichier, le script sert à caler des sous-titres exacts. Sous-titres, zooms et cartes suivent la voix.</p>
+      <div class="row"><label class="btn">Fichier de voix off<input type="file" id="vofile" accept="audio/*,.wav,.mp3,.m4a,.ogg,.flac,.opus" hidden></label><span id="voname" class="mono muted" style="font-size:12px"></span></div>
+      <textarea id="voscript" rows="4" style="width:100%;margin:10px 0" placeholder="Script : une réplique par ligne (accroche, bénéfice, preuve, appel à l'action)…">${esc(p.vo_script || "")}</textarea>
+      <div class="row"><select id="vomot"><option value="auto">Moteur auto</option><option value="elevenlabs">ElevenLabs</option><option value="inworld">Inworld</option><option value="edge">Edge (gratuit)</option><option value="espeak">espeak (hors-ligne)</option></select>
+        <input id="vovoix" placeholder="voix (facultatif)" style="width:200px">
+        <button class="btn y" id="vogo">Brancher la voix off + préparer</button>${p.voiceover ? '<button class="btn" id="vodel">Retirer la voix off</button>' : ""}</div></div>
+    <div class="panel"><span class="cap acc">Habillage Hyperframes</span>
+      <p class="muted" style="font-size:13px">Cartes animées posées automatiquement sur ce qui est dit : chiffres (compteur, prix promo), mots forts, nom de l'orateur — avec les cartes du style. Sans Hyperframes (Node 22), animations texte à la place.</p>
+      <div class="row"><input id="hfnom" placeholder="Nom de l'orateur (facultatif)" style="width:220px"><input id="hfrole" placeholder="Rôle" style="width:220px"><button class="btn y" id="hfgo">Habiller</button></div></div>
     <div class="panel"><div class="row" style="justify-content:space-between"><span class="cap acc">Historique</span>
       <button class="btn" id="undo" ${p.history.length ? "" : "disabled"}>↶ Annuler la dernière action</button></div>
       <div class="hist">${p.history.map((e, i) => `<div><span>${esc(e.label)}</span><small>${ago(e.t)}</small>${i ? `<button class="btn ghost" data-undo="${e.n}" title="Annule cette action et toutes celles d'après">↶ revenir avant</button>` : ""}</div>`).join("")
@@ -417,6 +428,16 @@ async function vProjet(video) {
   $("#trfile").onchange = async e => { const f = e.target.files[0]; if (!f) return;
     const r = await api("/api/transcript", {video: p.video, name: f.name, content: await f.text()});
     toast(r.error ? r.error : `${r.words} mots importés — lance « Préparer »`); if (!r.error) vProjet(video); };
+  let voPath = null;
+  $("#vofile").onchange = async e => { const f = e.target.files[0]; if (!f) return; $("#voname").textContent = "envoi…";
+    const r = await sendFile(`/api/upload?kind=voixoff&video=${encodeURIComponent(p.video)}&filename=${encodeURIComponent(f.name)}`, f,
+      x => $("#voname").textContent = `envoi ${Math.round(x * 100)} %`);
+    if (r.error) { $("#voname").textContent = ""; return toast(r.error); }
+    voPath = r.path; $("#voname").textContent = `${f.name} ✓ (${size(r.size)})`; };
+  $("#vogo").onclick = () => run("voixoff", {video: p.video, style: $("#stsel").value, aspect: $("#asp").value, fichier: voPath,
+    script: $("#voscript").value, moteur: $("#vomot").value, voix: $("#vovoix").value.trim()});
+  $("#vodel") && ($("#vodel").onclick = () => run("voixoff", {video: p.video, retire: true}));
+  $("#hfgo").onclick = () => run("habiller", {video: p.video, style: $("#stsel").value, nom: $("#hfnom").value.trim(), role: $("#hfrole").value.trim()});
   $$(".deliv div[data-r]").forEach(d => d.onclick = () => { STATE.sel = d.dataset.r; vProjet(video); });
   $$(".actions [data-a]").forEach(b => b.onclick = () => {
     const a = b.dataset.a, base = {video: p.video, style: $("#stsel").value, aspect: $("#asp").value};
@@ -893,14 +914,29 @@ async function vFormat(id) {
 
 // ---------- Activité ----------
 async function vActivite() {
-  const a = await api("/api/activity");
+  const [a, k] = await Promise.all([api("/api/activity"), api("/api/keys")]);
+  const keyRows = (k.keys || []).map(x => `<tr><td><b>${esc(x.service)}</b><div class="muted" style="font-size:12px">${esc(x.usage)}</div></td>
+    <td class="mono" style="font-size:11px">${esc(x.key)}</td>
+    <td><input data-key="${esc(x.key)}" placeholder="${x.set ? esc(x.value) + " — enregistrée" : x.key.includes("VOICE") ? "ID ou nom de voix" : "coller la clé"}" style="width:100%"></td>
+    <td>${x.url.startsWith("http") ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">obtenir</a>` : `<span class="mono muted" style="font-size:11px">${esc(x.url)}</span>`}</td>
+    <td class="mono" style="font-size:11px" id="kt-${esc(x.key)}">${x.set ? "🔑" : "—"}</td></tr>`).join("");
   $("#view").innerHTML = `<h1 class="page">Activité</h1><p class="sub">Tout ce que MonteurOS a lancé depuis le Studio — préparations, rendus, vérifications, cartes, retours.</p>
+    <div class="panel"><span class="cap acc">Connexions — clés API</span>
+      <p class="muted" style="font-size:13px">Enregistrées dans <span class="mono">.env</span>, jamais réaffichées en clair. Sans clé : B-roll Wikimedia et voix Edge gratuite. Laisse un champ vide pour ne rien changer.</p>
+      <div class="tbl"><table><tr><th>Service</th><th>Clé</th><th>Valeur</th><th></th><th>État</th></tr>${keyRows}</table></div>
+      <div class="row" style="margin-top:10px"><button class="btn y" id="ksave">Enregistrer</button><button class="btn" id="ktest">Tester les connexions</button></div></div>
     ${a.running.map(j => `<div class="panel"><div class="row"><span class="pill y">en cours</span><b>${esc(j.label)}</b><span class="mono muted">${esc(j.video || "")}</span></div><div class="log" id="joblog" style="margin-top:10px">…</div></div>`).join("")}
     <div class="tbl"><table><tr><th>Quand</th><th>Action</th><th>Projet</th><th>État</th><th>Durée</th><th>Dernières lignes</th></tr>
     ${a.items.map(i => `<tr><td class="mono muted" style="white-space:nowrap">${ago(i.started)}</td><td><b>${esc(i.label)}</b></td><td class="mono" style="font-size:12px">${esc(i.video || "")}</td>
       <td>${i.status === "done" ? '<span class="pill ok">terminé</span>' : i.status === "error" ? '<span class="pill r">erreur</span>' : i.status === "interrupted" ? '<span class="pill">interrompu</span>' : '<span class="pill y">en cours</span>'}</td>
       <td class="mono muted">${i.ended ? (i.ended - i.started) + " s" : "—"}</td><td class="mono muted" style="font-size:11px;max-width:380px">${esc((i.tail || []).slice(-2).join(" · ").replace(/\[monteur\] /g, ""))}</td></tr>`).join("")
       || `<tr><td colspan="6" class="empty">Rien pour l'instant.</td></tr>`}</table></div>`;
+  $("#ksave").onclick = async () => { const set = Object.fromEntries($$("[data-key]").filter(i => i.value.trim()).map(i => [i.dataset.key, i.value.trim()]));
+    if (!Object.keys(set).length) return toast("Rien à enregistrer");
+    const r = await api("/api/keys", {set}); toast(r.error || "Clés enregistrées ✓"); vActivite(); };
+  $("#ktest").onclick = async () => { toast("Test des connexions…");
+    const r = await api("/api/keys/test", {}); if (r.error) return toast(r.error);
+    Object.entries(r.results).forEach(([key, v]) => { const c = $("#kt-" + key); if (c) c.textContent = `${v.ok ? "✅" : v.ok === null ? "➖" : "❌"} ${v.detail}`; }); };
 }
 
 route();

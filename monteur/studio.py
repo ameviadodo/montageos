@@ -17,9 +17,10 @@ from .common import ASSETS, ROOT, STYLES, Workspace, active_style, load_json, lo
 UI = ROOT / "ui"
 LIB = ROOT / "library"
 VIDEO_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v"}
-ACTIONS = {"affiner", "appliquer", "retouche", "prep", "render", "broll", "cut", "plan", "style", "charte", "doctor", "transcribe", "verif", "carte", "projet"}
+ACTIONS = {"affiner", "appliquer", "retouche", "prep", "render", "broll", "cut", "plan", "style", "charte", "doctor", "transcribe",
+           "verif", "carte", "projet", "voixoff", "habiller", "analyse"}
 JOBS = {}
-API = 4  # à incrémenter quand ui/index.html attend de nouveaux champs : la page détecte un Studio pas redémarré
+API = 5  # à incrémenter quand ui/index.html attend de nouveaux champs : la page détecte un Studio pas redémarré
 
 
 def code_stamp():
@@ -143,6 +144,18 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
+    def trusted(self):
+        """Requête venue du Studio lui-même : hôte local (pas de DNS rebinding) et, si présente, origine locale
+        (un site ouvert dans le navigateur ne peut pas lancer d'action ni lire .env via /file)."""
+        local = ("127.0.0.1", "localhost", "[::1]")
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0]
+        if host and host not in local:
+            return False
+        origin = self.headers.get("Origin")
+        if origin and urlparse(origin).hostname not in ("127.0.0.1", "localhost", "::1"):
+            return False
+        return True
+
     def send(self, code, body, ctype="application/json"):
         if isinstance(body, bytes):
             data = body
@@ -216,14 +229,20 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             trans = []
         from .history import entries
-        return {**i, "dir": str(ws.dir), "plan": load_json(ws.plan), "transitions": trans, "cut_points": cut_points(ws),
+        from .voixoff import settings as vo_settings
+        vs = ws.dir / "voixoff" / "script.txt"
+        return {**i, "dir": str(ws.dir), "plan": load_json(ws.plan),
+                "voiceover": vo_settings(ws, plan or None), "vo_script": vs.read_text(encoding="utf-8") if vs.exists() else "", "transitions": trans, "cut_points": cut_points(ws),
                 "history": list(reversed(entries(ws)))[:15],
-                "plan_style": plan.get("style") or (i["style"] if plan else None),  # plans d'avant : style du projet "edl": (load_json(ws.edl) or {}).get("stats"),
+                "plan_style": plan.get("style") or (i["style"] if plan else None),  # plans d'avant : style du projet
+                "edl": (load_json(ws.edl) or {}).get("stats"),
                 "keep": (load_json(ws.edl) or {}).get("keep"), "transcript": tr, "files": files,
                 "review": review.load(ws), "verif": last_verif, "subs": subs, "sfx_events": sfx,
                 "styles": [p.stem for p in sorted(STYLES.glob("*.json"))]}
 
     def do_GET(self):
+        if not self.trusted():
+            return self.send(403, {"error": "origine refusée"})
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         try:
@@ -278,6 +297,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, html, "text/html")
             if u.path == "/vendor/gsap.min.js":
                 return self.send_file((ASSETS / "vendor" / "gsap.min.js").resolve())
+            if u.path == "/api/keys":
+                from .keys import status
+                return self.send(200, {"keys": status()})
             if u.path == "/api/activity":
                 live = [{k: v for k, v in j.items() if k != "log"} for j in JOBS.values() if j["status"] == "running"]
                 return self.send(200, {"items": list(reversed(load_json(ACTIVITY, []))), "running": live})
@@ -287,19 +309,39 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/file":
                 return self.send_file(Path(q["path"]).resolve())
             self.send(404, {"error": "introuvable"})
+        except ConnectionError:
+            return
         except Exception as e:
-            self.send(400, {"error": f"{type(e).__name__}: {e}"})
+            try:
+                self.send(400, {"error": f"{type(e).__name__}: {e}"})
+            except ConnectionError:
+                pass
+
+    def do_HEAD(self):  # certains navigateurs / antivirus sondent la page avant de l'ouvrir
+        self.send_response(200 if urlparse(self.path).path in ("/", "/index.html") else 404)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
 
     def send_file(self, p):
-        if not p or not p.is_file() or not any(a in p.parents for a in (self.root, ROOT)):
+        if not p or not p.is_file() or not any(a in p.parents for a in (self.root, ROOT)) \
+                or p.name.startswith(".env") or ".venv" in p.parts or ".git" in p.parts:
             return self.send(403, {"error": "accès refusé"})
         size = p.stat().st_size
         rng = self.headers.get("Range")
         start, end = 0, size - 1
         if rng and rng.startswith("bytes="):
-            a, _, b = rng[6:].partition("-")
-            start = int(a or 0)
-            end = int(b) if b else min(size - 1, start + (8 << 20))
+            a, _, b = rng[6:].split(",")[0].partition("-")
+            if a:
+                start = int(a)
+                end = min(size - 1, int(b)) if b else min(size - 1, start + (8 << 20))
+            else:  # « bytes=-500 » : les 500 derniers octets
+                start, end = max(0, size - int(b or 0)), size - 1
+            if start >= size or start > end:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
         self.send_response(206 if rng else 200)
         self.send_header("Content-Type", mimetypes.guess_type(p.name)[0] or "application/octet-stream")
         self.send_header("Accept-Ranges", "bytes")
@@ -313,7 +355,7 @@ class Handler(BaseHTTPRequestHandler):
             while left > 0 and (chunk := f.read(min(1 << 16, left))):
                 try:
                     self.wfile.write(chunk)
-                except (BrokenPipeError, ConnectionResetError):
+                except ConnectionError:  # BrokenPipe, Reset, Aborted (WinError 10053 : le lecteur saute ailleurs)
                     return
                 left -= len(chunk)
 
@@ -323,6 +365,13 @@ class Handler(BaseHTTPRequestHandler):
         name = slug(q.get("name") or "import")
         base = (STYLES / "refs" / name) if q.get("kind") == "style" else (UI / "themes" / name)
         fname = Path(unquote(q.get("filename") or "echantillon.mp4")).name
+        if q.get("kind") == "voixoff":  # voix off enregistrée → <rush>.monteur/voixoff/upload/
+            from .voixoff import AUDIO_EXT
+            if Path(fname).suffix.lower() not in AUDIO_EXT:
+                return self.send(400, {"error": f"pas un fichier audio : {fname}"})
+            dest = Workspace(self.video_path(q["video"])).dir / "voixoff" / "upload" / fname
+            self._receive(dest, 2 << 30)
+            return self.send(200, {"path": str(dest), "size": dest.stat().st_size})
         if q.get("kind") == "rush":  # nouveau rush choisi sur l'ordinateur → dossier des projets
             if Path(fname).suffix.lower() not in VIDEO_EXT:
                 return self.send(400, {"error": f"pas une vidéo : {fname}"})
@@ -355,6 +404,8 @@ class Handler(BaseHTTPRequestHandler):
         os.replace(tmp, dest)
 
     def do_POST(self):
+        if not self.trusted():
+            return self.send(403, {"error": "origine refusée"})
         u = urlparse(self.path)
         if u.path == "/api/upload":
             try:
@@ -425,6 +476,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, {"words": len(data["words"])})
             if u.path == "/api/run":
                 return self.run_action(body)
+            if u.path == "/api/keys":
+                from .keys import set_key, status
+                for k, v in (body.get("set") or {}).items():
+                    if v is not None and not str(v).startswith(("•", "…")) and "…" not in str(v):  # valeur masquée renvoyée telle quelle
+                        set_key(k, v)
+                return self.send(200, {"keys": status()})
+            if u.path == "/api/keys/test":
+                from .keys import test
+                return self.send(200, {"results": {k: {"ok": ok, "detail": d} for k, (ok, d) in test().items()}})
             if u.path == "/api/undo":
                 from .history import entries, undo
                 if any(j["status"] == "running" and j.get("video") == body["video"] for j in JOBS.values()):
@@ -450,7 +510,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(400, {"error": f"action interdite : {act}"})
         labels = {"retouche": "Retouche", "affiner": "Affinage du style", "appliquer": "Application du style", "prep": "Préparation", "render": "Rendu master", "broll": "Recherche B-roll", "verif": "Vérification",
                   "style": "Copie de style", "charte": "Extraction de charte", "carte": "Carte animée",
-                  "projet": "Mise à jour projet", "doctor": "Diagnostic"}
+                  "projet": "Mise à jour projet", "doctor": "Diagnostic", "analyse": "Analyse de la vidéo",
+                  "voixoff": "Voix off", "habiller": "Habillage Hyperframes"}
         label = labels.get(act, act)
         busy = [j for j in JOBS.values() if j["status"] == "running" and j.get("video") and j["video"] == body.get("video")]
         if busy and act not in ("verif",):
@@ -468,9 +529,9 @@ class Handler(BaseHTTPRequestHandler):
                 args.append("--activer")
         elif act != "doctor":
             args.append(str(self.video_path(body["video"])))
-            if body.get("style") and act not in ("verif", "projet"):  # appliquer : le style choisi devient celui du projet
+            if body.get("style") and act not in ("verif", "projet", "analyse", "voixoff" if body.get("retire") else ""):  # appliquer : le style choisi devient celui du projet
                 args += ["--style", body["style"]]
-            if body.get("aspect") and body["aspect"] != "source" and act not in ("verif", "projet", "carte"):
+            if body.get("aspect") and body["aspect"] != "source" and act not in ("verif", "projet", "carte", "analyse"):
                 args += ["--aspect", body["aspect"]]
             if body.get("cuts") and act in ("prep", "render", "plan"):
                 args += ["--cuts", body["cuts"]]
@@ -494,6 +555,36 @@ class Handler(BaseHTTPRequestHandler):
                 label = {"coupe": "Coupe ici", "zoom": "Zoom ici", "retire": "Retrait ici", "bruitage": "Bruitage ici"}[op] + " + draft"
             if act == "projet" and body.get("etat"):
                 args += ["--etat", body["etat"]]
+            if act == "voixoff":
+                ws = Workspace(self.video_path(body["video"]))
+                if body.get("retire"):
+                    args.append("--retire")
+                else:
+                    if body.get("fichier"):
+                        fp = Path(body["fichier"]).resolve()
+                        if ws.dir not in fp.parents or not fp.is_file():
+                            return self.send(400, {"error": "fichier de voix off introuvable (envoie-le d'abord)"})
+                        args += ["--fichier", str(fp)]
+                    if (body.get("script") or "").strip():
+                        sp = ws.dir / "voixoff" / "script_studio.txt"
+                        sp.parent.mkdir(parents=True, exist_ok=True)
+                        sp.write_text(body["script"].strip() + "\n", encoding="utf-8")
+                        args += ["--script", str(sp)]
+                    if not body.get("fichier") and not (body.get("script") or "").strip():
+                        return self.send(400, {"error": "envoie un fichier de voix off ou écris un script"})
+                    args += ["--moteur", body.get("moteur") or "auto"]
+                    if body.get("voix"):
+                        args += ["--voix", str(body["voix"])]
+                    if body.get("prep", True):
+                        args.append("--prep")
+                    label = "Voix off + préparation"
+            if act == "habiller":
+                for k in ("nom", "role"):
+                    if body.get(k):
+                        args += [f"--{k}", str(body[k])]
+                label = "Habillage Hyperframes"
+            if act == "analyse" and body.get("brief"):
+                args += ["--brief", str(body["brief"])]
         return self.send(200, run_job(args, label, body.get("video")))
 
 
@@ -528,30 +619,118 @@ def reload_code():
     return sys.modules["monteur.studio"]
 
 
-def _bind(port):
-    for k in range(20):  # le port peut rester occupé une fraction de seconde après la fermeture
+class Server(ThreadingHTTPServer):
+    """Serveur du Studio. Sous Windows, SO_REUSEADDR laisse DEUX programmes écouter le même port : le navigateur
+    tombait alors sur un ancien Studio (ou une autre application) et « la page ne s'ouvrait pas ». On exige le port
+    en exclusivité, et les déconnexions du lecteur vidéo (WinError 10053) ne remplissent plus la console."""
+    daemon_threads = True
+    allow_reuse_address = os.name != "nt"
+
+    def server_bind(self):
+        import socket
+        if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+    def handle_error(self, request, client_address):
+        if isinstance(sys.exc_info()[1], (ConnectionError, TimeoutError)):
+            return  # onglet fermé, vidéo qui saute : normal
+        super().handle_error(request, client_address)
+
+
+class Server6(Server):
+    address_family = __import__("socket").AF_INET6
+
+
+def _probe(port, timeout=1.5):
+    """Ce qui répond déjà sur ce port : {"monteur": True, …} pour un Studio, {} pour autre chose, None si rien."""
+    import urllib.request
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # jamais via le proxy système
+    try:
+        with opener.open(f"http://127.0.0.1:{port}/api/state", timeout=timeout) as r:
+            st = json.loads(r.read().decode("utf-8", "replace"))
+            return {"monteur": True, **st} if "boot" in st else {}
+    except Exception as e:
+        return {} if getattr(e, "code", None) else None
+
+
+def _bind(port, tries=20):
+    """Port demandé, sinon le suivant libre (8766, 8767…). Un ancien Studio sur le port est signalé."""
+    for p in range(port, port + tries):
+        for k in range(3):  # le port peut rester occupé un instant après la fermeture
+            try:
+                srv = Server(("127.0.0.1", p), Handler)
+                break
+            except OSError:
+                srv = None
+                time.sleep(0.2)
+        if srv:
+            if p != port:
+                other = _probe(port)
+                what = ("un autre MonteurOS Studio (ancienne fenêtre encore ouverte ?)" if other and other.get("monteur")
+                        else "une autre application")
+                log(f"⚠️  Le port {port} est pris par {what} : ce Studio utilise le port {p}.")
+            try:  # « localhost » peut viser ::1 (IPv6) sous Windows : on écoute aussi là, sans bloquer si impossible
+                srv6 = Server6(("::1", p), Handler)
+                threading.Thread(target=srv6.serve_forever, daemon=True).start()
+                srv.v6 = srv6
+            except OSError:
+                srv.v6 = None
+            return srv, p
+    raise SystemExit(f"Aucun port libre entre {port} et {port + tries - 1} : ferme les anciens Studios "
+                     f"(ou lance : bin/monteur studio --port 9000)")
+
+
+def _self_test(url, open_browser):
+    """Vérifie que la page répond vraiment, puis ouvre le navigateur ; sinon explique quoi faire."""
+    import urllib.request
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    for _ in range(20):
         try:
-            return ThreadingHTTPServer(("127.0.0.1", port), Handler)
-        except OSError:
-            if k == 19:
-                raise SystemExit(f"Le port {port} est déjà utilisé : un autre Studio tourne ? "
-                                 f"Ferme-le, ou lance : bin/monteur studio --port {port + 1}")
+            with opener.open(url + "api/state", timeout=2) as r:
+                if r.status == 200:
+                    break
+        except Exception as e:
+            err = e
             time.sleep(0.25)
+    else:
+        log(f"❌ Le Studio ne répond pas à sa propre adresse ({type(err).__name__}: {err}).")
+        log("   Pare-feu / antivirus qui filtre 127.0.0.1 ? Essaie : bin/monteur studio --port 9000")
+        return
+    log("✅ Studio prêt. Laisse CETTE fenêtre ouverte pendant que tu travailles (Ctrl+C pour arrêter).")
+    if open_browser:
+        import webbrowser
+        try:
+            if os.name == "nt":
+                os.startfile(url)  # navigateur par défaut, fiable depuis Git Bash / cmd
+            elif not webbrowser.open(url):
+                raise OSError("aucun navigateur")
+            log(f"   Navigateur ouvert sur {url} — sinon copie l'adresse dans Chrome, Edge ou Firefox.")
+        except Exception:
+            log(f"   Ouvre {url} dans ton navigateur.")
 
 
-def serve(port=8765, root="."):
+def serve(port=8765, root=".", open_browser=True):
     close_stale_jobs()
     Handler.root = Path(root).resolve()
-    srv = _bind(port)
-    log(f"MonteurOS Studio → http://127.0.0.1:{port}  (rushs : {Handler.root})")
+    if not Handler.root.is_dir():
+        raise SystemExit(f"Dossier des rushs introuvable : {Handler.root}")
+    srv, port = _bind(port)
+    url = f"http://127.0.0.1:{port}/"
+    log(f"MonteurOS Studio → {url}  (rushs : {Handler.root})")
     srv.restart = False
+    threading.Thread(target=_self_test, args=(url, open_browser and not os.environ.get("MONTEUR_NO_BROWSER")),
+                     daemon=True).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
-        pass
+        log("Studio arrêté (Ctrl+C). Relance : bin/monteur studio --root \"<dossier des rushs>\"")
     srv.server_close()
+    if getattr(srv, "v6", None):
+        srv.v6.shutdown()
+        srv.v6.server_close()
     if srv.restart:
         log("Code mis à jour : rechargement du Studio…")
         new = reload_code()
         new.JOBS.update(JOBS)  # les tâches en cours restent suivies
-        return new.serve(port, root)
+        return new.serve(port, root, open_browser=False)

@@ -12,6 +12,8 @@ Un agent monteur vidéo pour Claude. Tu lui donnes un rush brut, il te rend une 
 | ✨ Animations | Titre d'accroche, lower-third, callout, chapitres, CTA, motion design **Hyperframes** |
 | 💬 Sous-titres | Karaoké mot par mot, pop, mots-clés colorés, cartouche TikTok |
 | 🔊 Son | Whoosh, pop, ding, impact, riser, musique avec ducking, normalisation LUFS |
+| 🎙️ Voix off | Fichier fourni, ou script lu par **ElevenLabs**, **Inworld**, Edge (gratuit) ou espeak ; sous-titres calés mot à mot |
+| 🃏 Hyperframes | Habillage automatique : chiffres → compteur animé, « 29 € au lieu de 49 » → prix promo, nom → médaillon |
 | 🎨 Style | Copie le style d'une vidéo YouTube ou d'un MP4 ; extrait une charte graphique |
 | 🧩 Formats | Pub, UGC, documentaire, intro YouTube, formation, visuels produits |
 
@@ -31,6 +33,30 @@ Ouvre le dossier dans Claude Code (ou installe-le comme plugin), puis :
 
 > « Copie le style de https://youtu.be/… et applique-le à `interview.mp4`. »
 
+### Coupe facecam fine (skill coupe-facecam, facultatif — [installation](docs/coupe-facecam.md))
+```bash
+bin/monteur cles --set ELEVENLABS_API_KEY=sk_…
+bin/monteur facecam analyse rush.MOV --script texte.txt        # Scribe + écoute Silero : la dernière prise gagne
+bin/monteur facecam rendu rush-coupe --sans-eyecontact          # coupe + éditeur de relecture (http://127.0.0.1:50012)
+bin/monteur facecam importer rush-coupe --prep --style hormozi  # montage MonteurOS sur la coupe, sans recouper
+```
+Sans Whisper (Windows, réseau filtré), la clé ElevenLabs sert aussi de moteur de transcription.
+
+
+### Vidéo sans voix : voix off, script, style adapté
+Claude analyse d'abord la vidéo (`bin/monteur analyse rush.mp4`) : s'il n'y a pas de voix, il te demande un fichier
+de voix off, ou le script (il peut l'écrire), puis choisit le style adapté (pub, produit, documentaire…).
+```bash
+bin/monteur cles --set ELEVENLABS_API_KEY=sk_…  --set PEXELS_API_KEY=…    # clés dans .env, puis : bin/monteur cles --test
+bin/monteur prep produit.mp4 --brief "pub" --voix-off voix.mp3 --script script.txt --hyperframes
+bin/monteur prep produit.mp4 --brief "pub" --script script.txt --moteur elevenlabs --hyperframes   # voix synthétisée
+bin/monteur habiller rush.mp4 --nom "Léa Martin" --role "Fondatrice"      # cartes Hyperframes sur un projet existant
+bin/monteur render produit.mp4
+```
+Chaque service indisponible est contourné : ElevenLabs → Inworld → Edge → espeak pour la voix, Pexels → Pixabay →
+Wikimedia pour les images, Hyperframes → animations texte natives. Studio : page projet › Voix off / Habillage,
+Activité › Connexions (clés API).
+
 ## Utilisation manuelle
 ```bash
 bin/monteur run rush.mp4 --style pub --aspect 9:16 --music fond.mp3      # tout d'un coup
@@ -43,6 +69,14 @@ bin/monteur studio --root ~/Videos            # interface → http://127.0.0.1:8
 ```
 
 ## Interface MonteurOS Studio
+```bash
+bin/monteur studio --root "C:/Users/moi/Videos/rushs"     # le navigateur s'ouvre tout seul sur http://127.0.0.1:8765
+```
+Windows : double-clique **`Studio MonteurOS.cmd`** (rushs dans le dossier `rushs/` à côté, ou glisse un dossier
+dessus). **Laisse la fenêtre noire ouverte** : la fermer (ou Ctrl+C) arrête le Studio. Si le port 8765 est pris
+(ancien Studio encore ouvert, autre logiciel), le Studio prend le suivant (8766…) et l'affiche ; l'adresse exacte
+est toujours écrite dans la fenêtre.
+
 > 🎥 Tuto vidéo de prise en main : voir [`docs/tuto/`](docs/tuto/) (script d'enregistrement et de montage inclus).
 
 Une interface web locale : liste des rushs, cartes des 6 formats, lecteur Rush/Coupé/Final, timeline (zooms, B-roll, animations), inspecteur pour retoucher le plan, copie de style et sélecteur de charte. Les couleurs, polices et coins arrondis viennent de `ui/themes/<nom>.json`.
@@ -70,7 +104,7 @@ bin/monteur prep rush.mp4 --style split-carte       # format Split carte
   « Cloner le style » ; le style est rangé (état *Copié*) et peut être **activé** pour tous les nouveaux projets.
 - **Tous les formats** : 9:16, 16:9, 1:1, 4:5, 3:4, 2:3, 21:9 — filtre *Format* dans la bibliothèque, `--aspect` partout.
 - **Nouvelles chartes** depuis un lien vidéo ou un petit extrait MP4 → thème du Studio + style vidéo assorti.
-- **Recherche de cartes** animées (17 cartes : prix promo, avis étoiles, mot punch, intro logo, lieu/date, volet…).
+- **Recherche de cartes** animées (22 cartes : prix promo, avis étoiles, mot punch, intro logo, lieu/date, volet…).
 - **Types de cut** entre les plans : zoom cut, flash, passage au noir, whip, glitch, fondu, mix.
 
 ```bash
@@ -95,7 +129,7 @@ bin/monteur affiner viral                                           # vrais cuts
 > « MonteurOS a été mis à jour → Redémarrer le Studio » qui apparaît tout seul.
 
 ## Architecture
-- `skills/` : 13 skills Claude (un chef d'orchestre et 12 métiers). Le dossier sert aussi de plugin (`.claude-plugin/`) et de skills de projet (`.claude/skills`).
+- `skills/` : 15 skills Claude (un chef d'orchestre et 13 métiers ; + `coupe-facecam` si tu l'installes, [docs/coupe-facecam.md](docs/coupe-facecam.md)). Le dossier sert aussi de plugin (`.claude-plugin/`) et de skills de projet (`.claude/skills`).
 - `claude-projects/` : 4 projets claude.ai (directeur artistique, scripts pub/UGC, prompts studio IA, analyste de style).
 - `monteur/` : moteur Python + ffmpeg (aucune dépendance lourde).
 - `library/` : formats de reel (`formats/*.md`) et cartes animées Hyperframes (`cards/*.card.html`).

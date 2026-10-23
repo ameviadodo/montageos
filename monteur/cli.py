@@ -7,6 +7,7 @@ from .common import Workspace, active_style, load_json, load_style, log, probe, 
 
 ASPECT_CHOICES = ["source", "9:16", "16:9", "1:1", "4:5", "3:4", "2:3", "21:9"]
 CUT_CHOICES = ["hard", "zoomcut", "flash", "dip", "whip", "glitch", "fondu", "mix"]
+VOICE_ENGINES = ["auto", "elevenlabs", "inworld", "edge", "espeak"]
 
 
 def get_ws(a, snap=None):
@@ -74,8 +75,19 @@ def cmd_doctor(a):
         print("⚠️  transcription : pas de Whisper local → bash setup.sh (Python 3.12 auto via uv) "
               "ou bin/monteur transcription RUSH fichier.srt (export WhisperAI)")
     import os
-    for k in ("PEXELS_API_KEY", "PIXABAY_API_KEY", "FREESOUND_API_KEY", "MAGNIFIC_API_KEY", "GEMINI_API_KEY"):
+    for k in ("ELEVENLABS_API_KEY", "INWORLD_API_KEY", "PEXELS_API_KEY", "PIXABAY_API_KEY", "WIKIMEDIA_ACCESS_TOKEN",
+              "FREESOUND_API_KEY", "MAGNIFIC_API_KEY", "GEMINI_API_KEY"):
         print(f"{'🔑' if os.environ.get(k) else '➖'} {k}")
+    from .habillage import hyperframes_ok
+    print(f"{'✅' if hyperframes_ok() else '➖'} Hyperframes (Node ≥ 22 + npx){'' if hyperframes_ok() else ' — bash setup.sh --motion'}")
+    print("   bin/monteur cles --test : teste chaque clé configurée")
+    from .facecam import status as fc_status
+    fc = fc_status()
+    if not fc["modele"]:
+        print("➖ coupe-facecam non installé (facultatif, kit Agence Agentique) — voir docs/coupe-facecam.md")
+    else:
+        print(f"{'✅' if all(fc.values()) else '➖'} coupe-facecam (numpy, onnxruntime, requests, modèle Silero)"
+              + ("" if all(fc.values()) else f" — manque : {', '.join(k for k, v in fc.items() if not v)} → bash setup.sh"))
     print("🔊 SFX :", ", ".join(sfx.ensure_library()))
     fonts = sorted(p.name for p in (Path(__file__).parent.parent / "assets" / "fonts").glob("*.[ot]tf"))
     print("🔤 Polices :", ", ".join(fonts) or "aucune (lance setup.sh)")
@@ -117,12 +129,108 @@ def cmd_voix(a):
     if a.liste:
         print("moteurs disponibles :", ", ".join(engines()) or "aucun (pip install edge-tts, ou espeak-ng)")
         return
+    if a.liste_voix:
+        return list_voices(a.moteur)
     if a.fichier:
         lines = [l.strip() for l in Path(a.fichier).read_text(encoding="utf-8").splitlines() if l.strip()]
         script(lines, Path(a.out), a.moteur, a.voix, a.vitesse)
     else:
         wav, d, eng = synth(a.texte, a.out, a.moteur, a.voix, a.vitesse)
         print(f"✅ {wav} ({d:.1f} s, moteur {eng})")
+
+
+def list_voices(engine):
+    """Voix des API configurées (ElevenLabs, Inworld) ; Edge : quelques voix françaises."""
+    import json
+    import os
+    import urllib.request
+    shown = False
+    if engine in ("auto", "elevenlabs") and os.environ.get("ELEVENLABS_API_KEY"):
+        req = urllib.request.Request("https://api.elevenlabs.io/v1/voices",
+                                     headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            for v in json.load(r).get("voices", []):
+                lab = v.get("labels") or {}
+                print(f"elevenlabs  {v['voice_id']}  {v.get('name', ''):<22} {lab.get('gender', '')} {lab.get('accent', '')}")
+        shown = True
+    if engine in ("auto", "inworld") and os.environ.get("INWORLD_API_KEY"):
+        from .voiceover import inworld_voices
+        for v in inworld_voices(None):
+            print(f"inworld     {v.get('voiceId') or v.get('name'):<22} {v.get('displayName', '')} "
+                  f"{','.join(v.get('languages') or [])}")
+        shown = True
+    if engine in ("auto", "edge"):
+        print("edge        fr-FR-DeniseNeural  fr-FR-HenriNeural  fr-FR-VivienneMultilingualNeural  "
+              "fr-FR-RemyMultilingualNeural  fr-CA-SylvieNeural  fr-BE-CharlineNeural")
+        shown = True
+    if not shown:
+        print("Aucune clé pour ce moteur : bin/monteur cles --set ELEVENLABS_API_KEY=… (ou INWORLD_API_KEY=…)")
+
+
+def cmd_cles(a):
+    """Clés API dans .env : état (masqué), --set CLE=valeur, --retire CLE, --test."""
+    from . import keys
+    for kv in a.set or []:
+        if "=" not in kv:
+            raise SystemExit(f"Format attendu : CLE=valeur (reçu « {kv} »)")
+        keys.set_key(*kv.split("=", 1))
+    for k in a.retire or []:
+        keys.set_key(k, "")
+    if a.test:
+        for k, (ok, detail) in keys.test().items():
+            print(f"{'✅' if ok else '➖' if ok is None else '❌'} {k:<24} {detail}")
+        return
+    for s in keys.status():
+        print(f"{'🔑' if s['set'] else '➖'} {s['key']:<24} {s['value'] or '':<10} {s['service']} — {s['usage']}  ({s['url']})")
+
+
+def cmd_voixoff(a):
+    """Voix off du projet : fichier fourni, ou script synthétisé ; --retire pour revenir au son du rush."""
+    from . import voixoff
+    ws, _ = get_ws(a, "Voix off")
+    if a.retire:
+        return voixoff.remove(ws)
+    if a.fichier:
+        vo = voixoff.from_file(ws, a.fichier, a.script, a.language or "fr")
+    elif a.script:
+        vo = voixoff.from_script(ws, a.script, a.moteur, a.voix, a.vitesse, language=a.language or "fr")
+    else:
+        raise SystemExit("Donne --fichier voix.mp3 (voix enregistrée) ou --script script.txt (ou \"texte\") à synthétiser.")
+    if a.original is not None:
+        voixoff.install(ws, ws.dir / vo["file"], load_json(ws.transcript)["words"], vo["how"],
+                        a.language or "fr", vo.get("engine"), original=a.original)
+    if a.prep:
+        set_prep_defaults(a)
+        cmd_prep(a)
+
+
+def set_prep_defaults(a):
+    """« voixoff --prep » : la voix est déjà branchée, la préparation refait le plan dessus."""
+    a.force, a.no_cut, a.voix_off, a.script = True, True, None, None
+    a.no_broll, a.model = getattr(a, "no_broll", False), getattr(a, "model", "small")
+
+
+def cmd_analyse(a):
+    import json
+    from .adapt import analyse
+    ws = Workspace(a.video, getattr(a, "workdir", None))
+    print(json.dumps(analyse(ws, a.brief or ""), ensure_ascii=False, indent=2))
+
+
+def cmd_habiller(a):
+    from .habillage import dress
+    ws, style = get_ws(a, None if a.essai else "Habillage Hyperframes")
+    dress(ws, style, a.nom, a.role, a.max, not a.sans_hyperframes, a.essai)
+
+
+def cmd_notifier(a):
+    from .notify import notify
+    notify(" ".join(a.message), quiet=False)
+
+
+def cmd_facecam(a):
+    from .facecam import cli
+    cli(a)
 
 
 def cmd_transcription(a):
@@ -174,8 +282,10 @@ def cmd_render(a):
     out = render(ws, style, Path(a.out).resolve() if getattr(a, "out", None) else None, draft=getattr(a, "draft", False))
     from .history import record_render
     record_render(ws, out, f"Rendu {'draft' if getattr(a, 'draft', False) else 'master'} {out.name}")
-    if getattr(a, "draft", False) or getattr(a, "verif", False):
-        verify(ws, out)
+    res = verify(ws, out) if getattr(a, "draft", False) or getattr(a, "verif", False) else None
+    if not getattr(a, "draft", False):
+        from .notify import notify
+        notify(f"rendu master prêt : {out.name}" + ("" if res is None else " ✅" if res["ok"] else " — ⚠️ vérif à relire"))
 
 
 def cmd_verif(a):
@@ -244,11 +354,28 @@ def cmd_prep(a):
     from .plan import auto_plan
     from .transcribe import transcribe
     from .transcribe import NoWhisper
+    from . import voixoff
+    if getattr(a, "brief", None) is not None and not a.style and not load_json(Workspace(a.video, getattr(a, "workdir", None)).style):
+        from .adapt import analyse  # pas de style choisi : celui qui convient à la vidéo source
+        a.style = analyse(Workspace(a.video, getattr(a, "workdir", None)), a.brief)["style_conseille"]
+        log(f"Style adapté à la vidéo : « {a.style} »")
     ws, style = get_ws(a, "Préparation")
+    if getattr(a, "voix_off", None):
+        voixoff.from_file(ws, a.voix_off, getattr(a, "script", None), a.language or "fr")
+    elif getattr(a, "script", None):
+        voixoff.from_script(ws, a.script, getattr(a, "moteur", "auto"), getattr(a, "voix", None),
+                            language=a.language or "fr")
+    vo = voixoff.settings(ws)
     has_audio = probe(ws.source)["has_audio"] and not silent(ws.source)
+    if not has_audio and not vo:
+        log("🎙️  Cette vidéo n'a pas de voix. Pour des sous-titres et un montage calé sur une voix :")
+        log("   • voix off enregistrée : bin/monteur voixoff RUSH --fichier voix.mp3 [--script script.txt] --prep")
+        log("   • ou un script à faire lire : bin/monteur voixoff RUSH --script script.txt "
+            "[--moteur elevenlabs|inworld|edge] --prep")
+        log("   Préparation sans voix pour l'instant (zooms, musique, habillage).")
     no_whisper = False
     try:
-        t = load_json(ws.transcript) if ws.transcript.exists() and not a.force else \
+        t = load_json(ws.transcript) if (ws.transcript.exists() and (not a.force or vo)) else \
             (transcribe(ws.source, ws.transcript, a.model, a.language) if has_audio else {"words": []})
     except NoWhisper:
         no_whisper, t = True, {"words": []}
@@ -261,12 +388,17 @@ def cmd_prep(a):
         no_whisper, t = True, {"words": []}
         log(f"⚠️  Transcription impossible ({type(e).__name__}: {e}) : préparation sans transcription "
             "(coupe des silences, zooms). Relance « Préparer » après « bin/monteur doctor », ou importe une transcription.")
-    if style["cut"].get("enabled", True) and not a.no_cut and (t.get("words") or (no_whisper and has_audio)):
+    if vo:  # voix off : la vidéo garde sa durée, rien à couper dans la prise son du rush
+        ws.cut_video.unlink(missing_ok=True)
+        ws.cut_transcript.unlink(missing_ok=True)
+        edl = {"stats": f"pas de coupe (voix off : {vo.get('how')})"}
+    elif style["cut"].get("enabled", True) and not a.no_cut and (t.get("words") or (no_whisper and has_audio)):
         edl = cut(ws, style, t if t.get("words") else None)
     else:
         ws.cut_video.unlink(missing_ok=True)
         save_json(ws.transcript, t)
-        edl = {"stats": "coupe désactivée"}
+        edl = {"stats": "déjà coupée par coupe-facecam" if str(t.get("source", "")).startswith("coupe-facecam")
+               else "coupe désactivée"}
     old_style = (load_json(ws.plan) or {}).get("style")
     if not ws.plan.exists() or a.force:
         auto_plan(ws, style, ws.base_transcript())
@@ -275,6 +407,9 @@ def cmd_prep(a):
         apply_style(ws, style)
     if not a.no_broll:
         fetch(ws, portrait(ws, style))
+    if getattr(a, "hyperframes", False) or getattr(a, "nom", None):
+        from .habillage import dress
+        dress(ws, style, getattr(a, "nom", None), getattr(a, "role", None))
     print(f"\nDossier : {ws.dir}\nCoupe : {edl['stats']}\nÉdite {ws.plan} puis : monteur render {a.video}")
 
 
@@ -371,7 +506,7 @@ def cmd_cuts(a):
 
 def cmd_studio(a):
     from .studio import serve
-    serve(a.port, a.root)
+    serve(a.port, a.root, open_browser=not a.no_browser)
 
 
 def cmd_style(a):
@@ -461,6 +596,14 @@ def main(argv=None):
         s.add_argument("--force", action="store_true")
         s.add_argument("--no-broll", action="store_true")
         s.add_argument("--no-cut", action="store_true")
+        s.add_argument("--voix-off", metavar="FICHIER", help="voix off enregistrée (WAV/MP3…) à la place du son du rush")
+        s.add_argument("--script", help="script (fichier ou texte) : lu par --moteur, ou calé sur --voix-off")
+        s.add_argument("--moteur", default="auto", choices=VOICE_ENGINES)
+        s.add_argument("--voix", help="voix du moteur (ID ElevenLabs, nom Inworld, fr-FR-DeniseNeural…)")
+        s.add_argument("--hyperframes", action="store_true", help="habillage automatique en cartes animées")
+        s.add_argument("--nom", help="nom de l'orateur (médaillon animé au début)")
+        s.add_argument("--role", help="titre de l'orateur (avec --nom)")
+        s.add_argument("--brief", nargs="?", const="", help="sans --style : style adapté à la vidéo (et au brief : pub, ugc…)")
     s = vid("transcription", cmd_transcription,
             "Importe une transcription (SRT/VTT/JSON, ex. export WhisperAI) à la place de Whisper local")
     s.add_argument("fichier")
@@ -484,6 +627,26 @@ def main(argv=None):
     s.add_argument("--liste", action="store_true")
     s.add_argument("--jusqua", type=int, metavar="N", help="revient juste avant l'action n°N")
     vid("plan", cmd_plan, "Génère le plan auto (zooms, B-roll, animations)")
+    s = vid("voixoff", cmd_voixoff, "Voix off : --fichier voix.mp3 (enregistrée) ou --script (synthèse ElevenLabs/Inworld/Edge)")
+    s.add_argument("--fichier", help="voix off enregistrée (WAV, MP3, M4A…)")
+    s.add_argument("--script", help="script : fichier .txt (une réplique par ligne) ou texte entre guillemets")
+    s.add_argument("--moteur", default="auto", choices=VOICE_ENGINES)
+    s.add_argument("--voix")
+    s.add_argument("--vitesse", type=float, default=1.0)
+    s.add_argument("--original", type=float, metavar="GAIN", help="volume du son du rush sous la voix (0 = muet, défaut 0.15)")
+    s.add_argument("--language")
+    s.add_argument("--retire", action="store_true", help="retire la voix off (retour au son du rush)")
+    s.add_argument("--prep", action="store_true", help="enchaîne la préparation (plan, B-roll) sur la voix off")
+    s.add_argument("--no-broll", action="store_true")
+    s.add_argument("--hyperframes", action="store_true")
+    s = vid("analyse", cmd_analyse, "Analyse la vidéo source : voix ?, format, style conseillé, ce qu'il faut demander")
+    s.add_argument("--brief", help="ce que veut l'utilisateur (pub, ugc, tuto…) pour affiner le style conseillé")
+    s = vid("habiller", cmd_habiller, "Habillage automatique : cartes animées Hyperframes sur les chiffres, mots forts, nom")
+    s.add_argument("--nom")
+    s.add_argument("--role")
+    s.add_argument("--max", type=int, default=4)
+    s.add_argument("--sans-hyperframes", action="store_true", help="animations texte natives seulement")
+    s.add_argument("--essai", action="store_true", help="affiche les cartes prévues sans rien rendre")
     vid("broll", cmd_broll, "Télécharge les illustrations du plan")
     s = vid("render", cmd_render, "Rendu versionné (master, ou --draft rapide + vérification)")
     s.add_argument("--out")
@@ -546,11 +709,17 @@ def main(argv=None):
     s.add_argument("texte", nargs="?", default="")
     s.add_argument("--out", default="voix.wav", help="fichier WAV (ou dossier avec --fichier)")
     s.add_argument("--fichier", help="script texte : une réplique par ligne")
-    s.add_argument("--moteur", default="auto", choices=["auto", "edge", "espeak"])
-    s.add_argument("--voix", help="ex. fr-FR-DeniseNeural, fr-FR-HenriNeural, mb-fr1, mb-fr4")
+    s.add_argument("--moteur", default="auto", choices=VOICE_ENGINES)
+    s.add_argument("--voix", help="ID ElevenLabs, nom Inworld, fr-FR-DeniseNeural, mb-fr1…")
     s.add_argument("--vitesse", type=float, default=1.0)
     s.add_argument("--liste", action="store_true", help="moteurs disponibles")
+    s.add_argument("--liste-voix", action="store_true", help="voix disponibles (ElevenLabs, Inworld, Edge)")
     s.set_defaults(fn=cmd_voix)
+    s = sub.add_parser("cles", help="Clés API (.env) : état, --set CLE=valeur, --retire CLE, --test")
+    s.add_argument("--set", action="append", metavar="CLE=valeur")
+    s.add_argument("--retire", action="append", metavar="CLE")
+    s.add_argument("--test", action="store_true", help="teste la connexion à chaque service configuré")
+    s.set_defaults(fn=cmd_cles)
     s = sub.add_parser("avant-apres", help="Format reel Avant/après (2 vidéos empilées + titre)")
     s.add_argument("apres", help="version transformée")
     s.add_argument("avant", help="version originale")
@@ -573,9 +742,19 @@ def main(argv=None):
     s.add_argument("--name", required=True)
     s.add_argument("--sans-style", action="store_true", help="ne crée pas le style vidéo styles/<nom>.json")
     s.set_defaults(fn=cmd_charte)
+    s = sub.add_parser("facecam", help="Coupe fine d'un rush facecam (skill coupe-facecam : Scribe + VAD, Descript, éditeur)",
+                       description="analyse RUSH [--script s.txt] | rendu DOSSIER [--sans-eyecontact] | retouches DOSSIER | "
+                                   "eyecontact DOSSIER | importer DOSSIER [--prep]")
+    s.add_argument("action", choices=["analyse", "rendu", "retouches", "eyecontact", "importer"])
+    s.add_argument("args", nargs=argparse.REMAINDER, help="arguments de coupe.py (voir skills/coupe-facecam/SKILL.md)")
+    s.set_defaults(fn=cmd_facecam)
+    s = sub.add_parser("notifier", help="Envoie un message Telegram (étape à valider, question bloquante…)")
+    s.add_argument("message", nargs="+")
+    s.set_defaults(fn=cmd_notifier)
     s = sub.add_parser("studio", help="Interface web MonteurOS Studio")
     s.add_argument("--port", type=int, default=8765)
     s.add_argument("--root", default=".", help="dossier des rushs")
+    s.add_argument("--no-browser", action="store_true", help="n'ouvre pas le navigateur automatiquement")
     s.set_defaults(fn=cmd_studio)
     s = sub.add_parser("sfx", help="Liste / télécharge des bruitages")
     s.add_argument("--search")
@@ -601,6 +780,9 @@ def main(argv=None):
         a.fn(a)
     except RuntimeError as e:  # détail d'abord, cause en dernière ligne (c'est elle que l'Activité du Studio affiche)
         lines = str(e).splitlines() or ["erreur"]
+        if a.cmd in ("render", "run", "prep"):
+            from .notify import notify
+            notify(f"échec de « {a.cmd} » : {lines[0][:200]}")
         if len(lines) > 1:
             log("\n".join(lines[1:][-20:]))
         log("❌ " + lines[0])
